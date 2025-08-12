@@ -12,11 +12,11 @@ namespace Config {
     constexpr int OUTLINE_THICKNESS = 5;
     constexpr Uint8 OUTLINE_SCALE_INCREASE = 40;
 
-    constexpr float SCALE_FACTOR_UP = 1.05f;
-    constexpr float SCALE_FACTOR_DOWN = 0.95f;
+    constexpr float SCALE_FACTOR_UP = 1.08f;
+    constexpr float SCALE_FACTOR_DOWN = 0.92f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 1.0f;
-    constexpr float ROTATION_SPEED = 1.0f;
+    constexpr float ROTATION_SPEED = 0.8f;
     constexpr float COLOR_ROTATION_SPEED = 0.002f;
     constexpr float BRIGHTNESS_CYCLE_SPEED = 0.01f;
     constexpr float ALPHA_CHANGE_SPEED = 0.1f;

@@ -12,95 +12,11 @@
 #include "screen.h"
 #include "screen_manager.h"
 #include "fractal_manager.h"
+#include "math_utils.h"
+#include "shader_manager.h"
 #include <iostream>
 #include <ctime>
 #include <fstream>
-
-static void hsvToRgb(float h, float s, float v, Uint8& r, Uint8& g, Uint8& b) {
-    if (s <= 0.0f) {
-        r = g = b = static_cast<Uint8>(v * 255);
-        return;
-    }
-
-    h = fmod(h, 1.0f) * 6.0f;
-    int i = static_cast<int>(h);
-    float f = h - i;
-    float p = v * (1.0f - s);
-    float q = v * (1.0f - s * f);
-    float t = v * (1.0f - s * (1.0f - f));
-
-    switch (i) {
-    case 0: r = static_cast<Uint8>(v * 255); g = static_cast<Uint8>(t * 255); b = static_cast<Uint8>(p * 255); break;
-    case 1: r = static_cast<Uint8>(q * 255); g = static_cast<Uint8>(v * 255); b = static_cast<Uint8>(p * 255); break;
-    case 2: r = static_cast<Uint8>(p * 255); g = static_cast<Uint8>(v * 255); b = static_cast<Uint8>(t * 255); break;
-    case 3: r = static_cast<Uint8>(p * 255); g = static_cast<Uint8>(q * 255); b = static_cast<Uint8>(v * 255); break;
-    case 4: r = static_cast<Uint8>(t * 255); g = static_cast<Uint8>(p * 255); b = static_cast<Uint8>(v * 255); break;
-    default: r = static_cast<Uint8>(v * 255); g = static_cast<Uint8>(p * 255); b = static_cast<Uint8>(q * 255); break;
-    }
-}
-
-static void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float& h, float& s, float& v) {
-    float rf = r / 255.0f;
-    float gf = g / 255.0f;
-    float bf = b / 255.0f;
-    float max = std::max({ rf, gf, bf });
-    float min = std::min({ rf, gf, bf });
-    float delta = max - min;
-    v = max;
-    s = (max != 0.0f) ? (delta / max) : 0.0f;
-
-    if (delta == 0.0f) {
-        h = 0.0f;
-    }
-    else if (max == rf) {
-        h = fmod(((gf - bf) / delta), 6.0f) / 6.0f;
-    }
-    else if (max == gf) {
-        h = ((bf - rf) / delta + 2.0f) / 6.0f;
-    }
-    else {
-        h = ((rf - gf) / delta + 4.0f) / 6.0f;
-    }
-    if (h < 0.0f) h += 1.0f;
-}
-
-static GLuint createShaderProgram(const char* vertexSrc, const char* fragmentSrc) {
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSrc, nullptr);
-    glCompileShader(vertexShader);
-    GLint success;
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-        throw std::runtime_error("Vertex shader compilation failed: " + std::string(infoLog));
-    }
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSrc, nullptr);
-    glCompileShader(fragmentShader);
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-        throw std::runtime_error("Fragment shader compilation failed: " + std::string(infoLog));
-    }
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        throw std::runtime_error("Shader program linking failed: " + std::string(infoLog));
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-    return program;
-}
 
 class FractalVisualizer {
 public:
@@ -119,8 +35,7 @@ public:
         width = displayBounds.w;
         height = displayBounds.h;
         
-        window = SDL_CreateWindow("Fractal Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-                                 width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS);
+        window = SDL_CreateWindow("Fractal Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS);
         if (!window) {
             SDL_Quit();
             throw std::runtime_error(SDL_GetError());
@@ -177,8 +92,8 @@ public:
             }
         )";
         
-        textureShaderProgram = createShaderProgram(vertexShaderSrc, textureFragmentShaderSrc);
-        colorShaderProgram = createShaderProgram(vertexShaderSrc, colorFragmentShaderSrc);
+        textureShaderProgram = ShaderManager::createShaderProgram(vertexShaderSrc, textureFragmentShaderSrc);
+        colorShaderProgram = ShaderManager::createShaderProgram(vertexShaderSrc, colorFragmentShaderSrc);
 
         projection = glm::ortho(0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, -1.0f, 1.0f);
 
@@ -394,10 +309,10 @@ private:
         if (!selected) return;
         SDL_Color color = selected->getColor();
         float h, s, v;
-        rgbToHsv(color.r, color.g, color.b, h, s, v);
+        MathUtils::rgbToHsv(color.r, color.g, color.b, h, s, v);
         h = fmod(h + Config::COLOR_ROTATION_SPEED, 1.0f);
         Uint8 r, g, b;
-        hsvToRgb(h, s, v, r, g, b);
+        MathUtils::hsvToRgb(h, s, v, r, g, b);
         SDL_Color newColor = { r, g, b, color.a };
         selected->setColor(newColor);
     }
@@ -407,10 +322,10 @@ private:
         if (!selected) return;
         SDL_Color color = selected->getColor();
         float h, s, v;
-        rgbToHsv(color.r, color.g, color.b, h, s, v);
+        MathUtils::rgbToHsv(color.r, color.g, color.b, h, s, v);
         s = fmod(s - Config::BRIGHTNESS_CYCLE_SPEED + 1.0f, 1.0f);
         Uint8 r, g, b;
-        hsvToRgb(h, s, v, r, g, b);
+        MathUtils::hsvToRgb(h, s, v, r, g, b);
         SDL_Color newColor = { r, g, b, color.a };
         selected->setColor(newColor);
     }
@@ -445,43 +360,14 @@ private:
     }
 
     void draw() {
-        glClearColor(Config::BACKGROUND_COLOR.r / 255.0f, Config::BACKGROUND_COLOR.g / 255.0f,
-            Config::BACKGROUND_COLOR.b / 255.0f, Config::BACKGROUND_COLOR.a / 255.0f);
+        glClearColor(Config::BACKGROUND_COLOR.r / 255.0f, Config::BACKGROUND_COLOR.g / 255.0f, Config::BACKGROUND_COLOR.b / 255.0f, Config::BACKGROUND_COLOR.a / 255.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         fractalManager->renderCurrentFrame();
         
-        drawSelectionOutline();
+        OtherRenders::drawSelectionOutline(screenManager->getSelectedScreen(), scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
         
         SDL_GL_SwapWindow(window);
-    }
-
-    void drawSelectionOutline() {
-        Screen* selected = screenManager->getSelectedScreen();
-        if (!selected) return;
-
-        int width = scalingMode ? tempWidth : selected->getWidth();
-        int height = scalingMode ? tempHeight : selected->getHeight();
-        float centerX = selected->getX();
-        float centerY = selected->getY();
-
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX - width/2, centerY - height/2, 0.0f));
-        model = glm::translate(model, glm::vec3(width/2, height/2, 0.0f));
-        model = glm::rotate(model, glm::radians(selected->getRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-width/2, -height/2, 0.0f));
-        model = glm::scale(model, glm::vec3(width, height, 1.0f));
-
-        SDL_Color outlineColor = scalingMode ? selected->getScaleOutlineColor() : selected->getOutlineColor();
-        glUseProgram(colorShaderProgram);
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glUniform4f(glGetUniformLocation(colorShaderProgram, "color"),
-            outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_LINE_LOOP, 0, 4);
-        glBindVertexArray(0);
-        glUseProgram(0);
     }
 };
 

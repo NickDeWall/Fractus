@@ -157,3 +157,62 @@ void FractalManager::renderCurrentFrame() {
     glBindVertexArray(0);
     glUseProgram(0);
 }
+
+namespace OtherRenders {
+    void drawSelectionOutline(Screen* selected, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao) {
+        if (!selected) return;
+
+        int width = scalingMode ? tempWidth : selected->getWidth();
+        int height = scalingMode ? tempHeight : selected->getHeight();
+        float centerX = selected->getX();
+        float centerY = selected->getY();
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX - width/2, centerY - height/2, 0.0f));
+        model = glm::translate(model, glm::vec3(width/2, height/2, 0.0f));
+        model = glm::rotate(model, glm::radians(selected->getRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(-width/2, -height/2, 0.0f));
+        model = glm::scale(model, glm::vec3(width, height, 1.0f));
+
+        SDL_Color outlineColor = scalingMode ? selected->getScaleOutlineColor() : selected->getOutlineColor();
+        glUseProgram(colorShaderProgram);
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glUniform4f(glGetUniformLocation(colorShaderProgram, "color"),
+            outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_LINE_LOOP, 0, 4);
+        glBindVertexArray(0);
+        glUseProgram(0);
+    }
+
+    void initGL(int width, int height, GLuint& vao, GLuint& vbo) {
+        glViewport(0, 0, width, height);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE);
+
+        float vertices[] = {
+            0.0f, 0.0f, 0.0f, 0.0f,
+            1.0f, 0.0f, 1.0f, 0.0f,
+            1.0f, 1.0f, 1.0f, 1.0f,
+            0.0f, 1.0f, 0.0f, 1.0f 
+        };
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    void cleanupGL(GLuint& vao, GLuint& vbo) {
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+    }
+}

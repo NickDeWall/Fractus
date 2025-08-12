@@ -1,4 +1,4 @@
-// fractal_manager.h - Simplified header
+
 #pragma once
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -16,6 +16,7 @@ public:
     void renderCurrentFrame();
     GLuint loadPreviousFrame(int frameNum);
     void saveFrame(GLuint texture, int frameNum);
+    
 
 private:
     GLuint createTexture(int w, int h);
@@ -33,3 +34,9 @@ private:
     GLuint fbo;
     GLuint vao, vbo;
 };
+
+namespace OtherRenders {
+    void drawSelectionOutline(Screen* selectedScreen, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao);
+    void initGL(int width, int height, GLuint& vao, GLuint& vbo);
+    void cleanupGL(GLuint& vao, GLuint& vbo);
+}

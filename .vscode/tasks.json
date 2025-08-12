@@ -13,6 +13,8 @@
                 "${workspaceFolder}\\src\\screen.cpp",
                 "${workspaceFolder}\\src\\screen_manager.cpp",
                 "${workspaceFolder}\\src\\fractal_manager.cpp",
+                "${workspaceFolder}\\src\\shader_manager.cpp",
+                "${workspaceFolder}\\src\\math_utils.cpp",
                 "-I${workspaceFolder}\\header",
                 "-IC:\\msys64\\mingw64\\include",
                 "-LC:\\msys64\\mingw64\\lib",
