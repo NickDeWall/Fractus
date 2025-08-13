@@ -2,13 +2,13 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build Fractus",
+            "label": "Build Fractal Visualizer",
             "type": "shell",
             "command": "g++.exe",
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}\\build\\debug\\Fractus.exe",
+                "${workspaceFolder}\\fractal_visualizer.exe",
                 "${workspaceFolder}\\src\\main.cpp",
                 "${workspaceFolder}\\src\\screen.cpp",
                 "${workspaceFolder}\\src\\screen_manager.cpp",
@@ -30,35 +30,6 @@
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"]
-        },
-        {
-            "label": "Analyze Dependencies",
-            "type": "shell",
-            "command": "C:\\msys64\\usr\\bin\\ldd.exe ${workspaceFolder}\\build\\debug\\Fractus.exe > ${workspaceFolder}\\scripts\\dependencies.txt",
-            "problemMatcher": []
-        },
-        {
-            "label": "Package Release",
-            "type": "shell",
-            "command": "cmd.exe",
-            "args": [
-                "/c",
-                "${workspaceFolder}\\scripts\\package_release.bat"
-            ],
-            "problemMatcher": []
-        },
-        {
-            "label": "Build and Package (Release)",
-            "dependsOn": [
-                "Build Fractal Visualizer (Release)",
-                "Analyze Dependencies",
-                "Package Release"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": []
         }
     ]
 }
