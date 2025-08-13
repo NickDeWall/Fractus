@@ -372,23 +372,6 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-    std::time_t now = std::time(nullptr);
-    std::string timestamp = std::ctime(&now);
-    timestamp.pop_back();
-
-    std::ofstream logFile("fractal_visualizer_log.txt", std::ios::trunc);
-    if (!logFile) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to open log file");
-        return 1;
-    }
-
-    std::streambuf* coutBuf = std::cout.rdbuf();
-    std::streambuf* cerrBuf = std::cerr.rdbuf();
-    std::cout.rdbuf(logFile.rdbuf());
-    std::cerr.rdbuf(logFile.rdbuf());
-
-    std::cout << "Fractal Visualizer Started - " << timestamp << std::endl;
-    
     try {
         FractalVisualizer app;
         app.run();

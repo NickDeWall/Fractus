@@ -8,7 +8,7 @@
             "args": [
                 "-g",
                 "-o",
-                "${workspaceFolder}\\fractal_visualizer.exe",
+                "${workspaceFolder}\\build\\debug\\fractal_visualizer.exe",
                 "${workspaceFolder}\\src\\main.cpp",
                 "${workspaceFolder}\\src\\screen.cpp",
                 "${workspaceFolder}\\src\\screen_manager.cpp",
