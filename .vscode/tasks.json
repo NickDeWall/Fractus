@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build Fractus",
+            "label": "Build Fractal Visualizer",
             "type": "shell",
             "command": "g++.exe",
             "args": [
@@ -33,8 +33,8 @@
                 "-lsetupapi",
                 "-lole32",
                 "-loleaut32",
-                "-lstdc++",
-                "-lmingw32",
+                "-static-libgcc",
+                "-static-libstdc++",
                 "-mwindows"
             ],
             "group": {
