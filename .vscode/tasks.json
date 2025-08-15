@@ -23,6 +23,7 @@
                 "-lSDL2",
                 "-lglew32",
                 "-lopengl32",
+                "-lpthread",
                 "-Wl,-Bdynamic",
                 "-lgdi32",
                 "-luser32",
