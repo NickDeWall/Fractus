@@ -14,6 +14,9 @@ The program uses C++ with OpenGL rendering. The user is able to create sub-scree
 | Right Click | Delete sub-screen |
 | Scroll | Scale selected sub-screen |
 | A/D | Rotate selected sub-screen |
+| W/S | Strengthen/Weaken alpha of selected sub-screen |
+| Up Arrow | Cycle color of selected sub-screen |
+| Down Arrow | Cycle saturation of selected sub-screen |
 
 
 ## Optimizations
