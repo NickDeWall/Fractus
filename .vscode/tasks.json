@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build Fractal Visualizer",
+            "label": "Build Fractus (Static)",
             "type": "shell",
             "command": "g++.exe",
             "args": [
@@ -10,7 +10,7 @@
                 "-g",
                 "-static",
                 "-o",
-                "${workspaceFolder}\\build\\debug\\fractal_visualizer.exe",
+                "${workspaceFolder}\\build\\release\\Fractus.exe",
                 "${workspaceFolder}\\src\\main.cpp",
                 "${workspaceFolder}\\src\\screen.cpp",
                 "${workspaceFolder}\\src\\screen_manager.cpp",
@@ -35,6 +35,36 @@
                 "-loleaut32",
                 "-static-libgcc",
                 "-static-libstdc++",
+                "-mwindows"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Build Fractus (Dynamic)",
+            "type": "shell",
+            "command": "g++.exe",
+            "args": [
+                "-g",
+                "-o",
+                "${workspaceFolder}\\build\\debug\\Fractus.exe",
+                "${workspaceFolder}\\src\\main.cpp",
+                "${workspaceFolder}\\src\\screen.cpp",
+                "${workspaceFolder}\\src\\screen_manager.cpp",
+                "${workspaceFolder}\\src\\fractal_manager.cpp",
+                "${workspaceFolder}\\src\\shader_manager.cpp",
+                "${workspaceFolder}\\src\\math_utils.cpp",
+                "-I${workspaceFolder}\\header",
+                "-IC:\\msys64\\mingw64\\include",
+                "-LC:\\msys64\\mingw64\\lib",
+                "-lmingw32",
+                "-lSDL2main",
+                "-lSDL2",
+                "-lglew32",
+                "-lopengl32",
                 "-mwindows"
             ],
             "group": {

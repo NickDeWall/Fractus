@@ -8,19 +8,19 @@ namespace Config {
 
     constexpr SDL_Color DEFAULT_SCREEN_COLOR = { 66, 135, 245, 15 };
     constexpr float INITIAL_SCREEN_SIZE_RATIO = 0.25f;
-    constexpr Uint8 OUTLINE_ALPHA = 40;
-    constexpr int OUTLINE_THICKNESS = 5;
+    constexpr Uint8 OUTLINE_ALPHA = 30;
+    constexpr int OUTLINE_THICKNESS = 3;
     constexpr Uint8 OUTLINE_SCALE_INCREASE = 40;
 
     constexpr float SCALE_FACTOR_UP = 1.08f;
     constexpr float SCALE_FACTOR_DOWN = 0.92f;
     constexpr int MIN_SCREEN_SIZE = 0;
-    constexpr float MAX_SCREEN_RATIO = 1.0f;
+    constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 0.8f;
     constexpr float COLOR_ROTATION_SPEED = 0.002f;
-    constexpr float BRIGHTNESS_CYCLE_SPEED = 0.01f;
-    constexpr float ALPHA_CHANGE_SPEED = 0.1f;
-    constexpr Uint8 MAX_SCREEN_ALPHA = 100;
+    constexpr float SATURATION_CYCLE_SPEED = 0.004f;
+    constexpr float ALPHA_CHANGE_SPEED = 0.01f;
+    constexpr Uint8 MAX_SCREEN_ALPHA = 70;
 
     constexpr const char* FRAME_SAVE_DIR = "frames";
     constexpr bool DEV_TOOLS = true;

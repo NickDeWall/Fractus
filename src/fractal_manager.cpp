@@ -166,22 +166,47 @@ namespace OtherRenders {
         int height = scalingMode ? tempHeight : selected->getHeight();
         float centerX = selected->getX();
         float centerY = selected->getY();
-
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX - width/2, centerY - height/2, 0.0f));
-        model = glm::translate(model, glm::vec3(width/2, height/2, 0.0f));
-        model = glm::rotate(model, glm::radians(selected->getRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-width/2, -height/2, 0.0f));
-        model = glm::scale(model, glm::vec3(width, height, 1.0f));
+        float rotation = selected->getRotation();
 
         SDL_Color outlineColor = scalingMode ? selected->getScaleOutlineColor() : selected->getOutlineColor();
+        
         glUseProgram(colorShaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glUniform4f(glGetUniformLocation(colorShaderProgram, "color"),
-            outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
+        glUniform4f(glGetUniformLocation(colorShaderProgram, "color"), outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
         glBindVertexArray(vao);
-        glDrawArrays(GL_LINE_LOOP, 0, 4);
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
+        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(-(width + 2*Config::OUTLINE_THICKNESS)/2, height/2, 0.0f));
+        model = glm::scale(model, glm::vec3(width + 2*Config::OUTLINE_THICKNESS, Config::OUTLINE_THICKNESS, 1.0f));
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
+        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(-(width + 2*Config::OUTLINE_THICKNESS)/2, -height/2 - Config::OUTLINE_THICKNESS, 0.0f));
+        model = glm::scale(model, glm::vec3(width + 2*Config::OUTLINE_THICKNESS, Config::OUTLINE_THICKNESS, 1.0f));
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
+        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(-width/2 - Config::OUTLINE_THICKNESS, -height/2, 0.0f));
+        model = glm::scale(model, glm::vec3(Config::OUTLINE_THICKNESS, height, 1.0f));
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
+        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::translate(model, glm::vec3(width/2, -height/2, 0.0f));
+        model = glm::scale(model, glm::vec3(Config::OUTLINE_THICKNESS, height, 1.0f));
+        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
         glBindVertexArray(0);
         glUseProgram(0);
     }

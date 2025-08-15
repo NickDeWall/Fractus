@@ -294,7 +294,7 @@ private:
             handleColorRotation();
         }
         else if (event == "cycle_saturation") {
-            handleBrightening();
+            handleSaturation();
         }
         else if (event == "strengthen") {
             handleStrengthen();
@@ -317,13 +317,13 @@ private:
         selected->setColor(newColor);
     }
 
-    void handleBrightening() {
+    void handleSaturation() {
         Screen* selected = screenManager->getSelectedScreen();
         if (!selected) return;
         SDL_Color color = selected->getColor();
         float h, s, v;
         MathUtils::rgbToHsv(color.r, color.g, color.b, h, s, v);
-        s = fmod(s - Config::BRIGHTNESS_CYCLE_SPEED + 1.0f, 1.0f);
+        s = fmod(static_cast<float>(s) - Config::SATURATION_CYCLE_SPEED + 1.0f, 1.0f);
         Uint8 r, g, b;
         MathUtils::hsvToRgb(h, s, v, r, g, b);
         SDL_Color newColor = { r, g, b, color.a };
@@ -334,8 +334,7 @@ private:
         Screen* selected = screenManager->getSelectedScreen();
         if (!selected) return;
         SDL_Color color = selected->getColor();
-        Uint8 newAlpha = std::min(static_cast<int>(Config::MAX_SCREEN_ALPHA),
-            static_cast<int>(color.a + Config::ALPHA_CHANGE_SPEED * 255));
+        Uint8 newAlpha = static_cast<int>(std::min(static_cast<float>(Config::MAX_SCREEN_ALPHA), std::ceil(color.a + Config::ALPHA_CHANGE_SPEED)));
         SDL_Color newColor = { color.r, color.g, color.b, newAlpha };
         selected->setColor(newColor);
     }
@@ -344,7 +343,7 @@ private:
         Screen* selected = screenManager->getSelectedScreen();
         if (!selected) return;
         SDL_Color color = selected->getColor();
-        Uint8 newAlpha = std::max(0, static_cast<int>(color.a - Config::ALPHA_CHANGE_SPEED * 255));
+        Uint8 newAlpha = std::max(0.0f, static_cast<float>(color.a - Config::ALPHA_CHANGE_SPEED));
         SDL_Color newColor = { color.r, color.g, color.b, newAlpha };
         selected->setColor(newColor);
     }
@@ -372,6 +371,21 @@ private:
 };
 
 int main(int argc, char* argv[]) {
+    //std::time_t now = std::time(nullptr);
+    //std::string timestamp = std::ctime(&now);
+    //timestamp.pop_back();
+    //
+    //std::ofstream logFile("fractal_visualizer_log.txt", std::ios::trunc);
+    //if (!logFile) {
+    //    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to open log file");
+    //    return 1;
+    //}
+    //
+    //std::streambuf* coutBuf = std::cout.rdbuf();
+    //std::streambuf* cerrBuf = std::cerr.rdbuf();
+    //std::cout.rdbuf(logFile.rdbuf());
+    //std::cerr.rdbuf(logFile.rdbuf());
+
     try {
         FractalVisualizer app;
         app.run();
