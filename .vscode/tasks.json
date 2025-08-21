@@ -36,7 +36,8 @@
                 "-loleaut32",
                 "-static-libgcc",
                 "-static-libstdc++",
-                "-mwindows"
+                "-mwindows",
+                "-O3"
             ],
             "group": {
                 "kind": "build",
@@ -67,7 +68,8 @@
                 "-lSDL2",
                 "-lglew32",
                 "-lopengl32",
-                "-mwindows"
+                "-mwindows",
+                "-O3"
             ],
             "group": {
                 "kind": "build",

@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(fractus2)
 
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+
 add_executable(fractus
     ${PROJECT_SOURCE_DIR}/../src/main.cpp
     ${PROJECT_SOURCE_DIR}/../src/fractal_manager.cpp
