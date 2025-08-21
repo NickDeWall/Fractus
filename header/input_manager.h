@@ -45,7 +45,10 @@ private:
 
     bool handleEvents();
     void handleMouseClick(const SDL_MouseButtonEvent& event);
+    void handleTempScaling(const SDL_Event& event);
+    void handleScalingMotion(const SDL_Event& event);
     void handleKeyPress(const std::string& event);
+    void handleExitScaling(const SDL_Event& event);
     void handleColorRotation();
     void handleSaturation();
     void handleStrengthen();

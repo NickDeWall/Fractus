@@ -163,40 +163,13 @@ bool InputManager::handleEvents() {
             }
             break;
         case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_SPACE && screenManager->getSelectedScreen()) {
-                scalingMode = true;
-                int x, y;
-                SDL_GetMouseState(&x, &y);
-                scaleStartPos = { static_cast<float>(x), static_cast<float>(y) };
-                originalDimensions = {
-                    static_cast<float>(screenManager->getSelectedScreen()->getWidth()),
-                    static_cast<float>(screenManager->getSelectedScreen()->getHeight())
-                };
-                tempWidth = static_cast<int>(originalDimensions.x);
-                tempHeight = static_cast<int>(originalDimensions.y);
-            }
+            handleTempScaling(event);
             break;
         case SDL_KEYUP:
-            if (event.key.keysym.sym == SDLK_SPACE && scalingMode) {
-                scalingMode = false;
-                screenManager->getSelectedScreen()->setWidth(tempWidth);
-                screenManager->getSelectedScreen()->setHeight(tempHeight);
-            }
+            handleExitScaling(event);
             break;
         case SDL_MOUSEMOTION:
-            if (scalingMode) {
-                int x, y;
-                SDL_GetMouseState(&x, &y);
-                SDL_FPoint currentPos = { static_cast<float>(x), static_cast<float>(y) };
-                float deltaX = currentPos.x - scaleStartPos.x;
-                float deltaY = currentPos.y - scaleStartPos.y;
-                tempWidth = std::max(Config::MIN_SCREEN_SIZE,
-                    std::min(static_cast<int>(originalDimensions.x + deltaX),
-                        static_cast<int>(width * Config::MAX_SCREEN_RATIO)));
-                tempHeight = std::max(Config::MIN_SCREEN_SIZE,
-                    std::min(static_cast<int>(originalDimensions.y - deltaY),
-                        static_cast<int>(height * Config::MAX_SCREEN_RATIO)));
-            }
+            handleScalingMotion(event);
             break;
         }
     }
@@ -206,10 +179,10 @@ bool InputManager::handleEvents() {
         return false;
     }
     if (keyState[SDL_SCANCODE_D]) {
-        handleKeyPress("turn_right");
+        handleKeyPress("rotate_clockwise");
     }
     else if (keyState[SDL_SCANCODE_A]) {
-        handleKeyPress("turn_left");
+        handleKeyPress("rotate_counterclockwise");
     }
     else if (keyState[SDL_SCANCODE_W]) {
         handleKeyPress("strengthen");
@@ -226,6 +199,41 @@ bool InputManager::handleEvents() {
         }
     }
     return true;
+}
+
+void InputManager::handleTempScaling(const SDL_Event& event) {
+    if (event.key.keysym.sym == SDLK_SPACE && screenManager->getSelectedScreen()) {
+        scalingMode = true;
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        scaleStartPos = { static_cast<float>(x), static_cast<float>(y) };
+        originalDimensions = {
+            static_cast<float>(screenManager->getSelectedScreen()->getWidth()),
+            static_cast<float>(screenManager->getSelectedScreen()->getHeight())
+        };
+        tempWidth = static_cast<int>(originalDimensions.x);
+        tempHeight = static_cast<int>(originalDimensions.y);
+    }
+}
+
+void InputManager::handleScalingMotion(const SDL_Event& event) {
+    if (scalingMode) {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        SDL_FPoint currentPos = { static_cast<float>(x), static_cast<float>(y) };
+        float deltaX = currentPos.x - scaleStartPos.x;
+        float deltaY = currentPos.y - scaleStartPos.y;
+        tempWidth = std::max(Config::MIN_SCREEN_SIZE, std::min(static_cast<int>(originalDimensions.x + deltaX), static_cast<int>(width * Config::MAX_SCREEN_RATIO)));
+        tempHeight = std::max(Config::MIN_SCREEN_SIZE, std::min(static_cast<int>(originalDimensions.y - deltaY), static_cast<int>(height * Config::MAX_SCREEN_RATIO)));
+    }
+}
+
+void InputManager::handleExitScaling(const SDL_Event& event) {
+    if (event.key.keysym.sym == SDLK_SPACE && scalingMode) {
+        scalingMode = false;
+        screenManager->getSelectedScreen()->setWidth(tempWidth);
+        screenManager->getSelectedScreen()->setHeight(tempHeight);
+    }
 }
 
 void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
@@ -258,10 +266,10 @@ void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
 void InputManager::handleKeyPress(const std::string& event) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
-    if (event == "turn_right") {
+    if (event == "rotate_clockwise") {
         screenManager->handleRotation(-Config::ROTATION_SPEED);
     }
-    else if (event == "turn_left") {
+    else if (event == "rotate_counterclockwise") {
         screenManager->handleRotation(Config::ROTATION_SPEED);
     }
     else if (event == "cycle_hue") {
