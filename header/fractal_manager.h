@@ -1,4 +1,3 @@
-
 #pragma once
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -6,6 +5,7 @@
 #include <unordered_map>
 #include "screen.h"
 #include "config.h"
+#include <SDL2/SDL_ttf.h>
 
 class FractalManager {
 public:
@@ -36,7 +36,10 @@ private:
 };
 
 namespace OtherRenders {
-    void drawSelectionOutline(Screen* selectedScreen, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao);
+    void renderSelectionOutline(Screen* selectedScreen, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao);
     void initGL(int width, int height, GLuint& vao, GLuint& vbo);
     void cleanupGL(GLuint& vao, GLuint& vbo);
+    bool initFPSTexture(GLuint& fpsTexture);
+    bool updateFPSTexture(int fps, TTF_Font* font, GLuint& fpsTexture, int& outWidth, int& outHeight);
+    void renderFPS(int screenWidth, int screenHeight, GLuint fpsTexture, int fpsWidth, int fpsHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao);
 }

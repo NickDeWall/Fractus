@@ -4,7 +4,7 @@
 namespace Config {
     constexpr int SCREEN_WIDTH = 1600;
     constexpr int SCREEN_HEIGHT = 950;
-    constexpr int FPS = 140;
+    constexpr int FPS = 120;
 
     constexpr SDL_Color DEFAULT_SCREEN_COLOR = { 66, 135, 245, 15 };
     constexpr float INITIAL_SCREEN_SIZE_RATIO = 0.25f;
@@ -33,4 +33,9 @@ namespace Config {
     constexpr bool USE_HARDWARE_ACCEL = true;
 
     constexpr bool SHOW_FPS = true;
+
+    constexpr int FPS_UPDATE_INTERVAL_MS = 1000;
+    constexpr float FPS_WIDTH_RATIO = 0.07f;
+    constexpr float FPS_HEIGHT_RATIO = 0.07f;
+    constexpr SDL_Color FPS_TEXT_COLOR = { 255, 255, 255, 60 };
 }

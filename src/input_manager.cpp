@@ -15,6 +15,7 @@
 #include "math_utils.h"
 #include "shader_manager.h"
 #include "input_manager.h"
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <ctime>
 #include <fstream>
@@ -52,6 +53,26 @@ InputManager::InputManager() {
         SDL_Quit();
         throw std::runtime_error("Failed to initialize GLEW");
     }
+
+    if (TTF_Init() == -1) {
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        throw std::runtime_error("Failed to initialize SDL_ttf");
+    }
+
+    font = TTF_OpenFont("..\\..\\assets\\fonts\\BebasNeue-Regular.ttf", 24);
+    if (!font) {
+        TTF_Quit();
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        throw std::runtime_error("Failed to load font");
+    }
+
+    fpsWidth = Config::FPS_WIDTH_RATIO * width;
+    fpsHeight = Config::FPS_WIDTH_RATIO * height;
+    OtherRenders::initFPSTexture(fpsTexture);
 
     glViewport(0, 0, width, height);
     glEnable(GL_BLEND);
@@ -118,16 +139,26 @@ InputManager::InputManager() {
     frozenFrame = 0;
     tempWidth = 0;
     tempHeight = 0;
+
+    lastFPSTime = SDL_GetTicks();
+    fpsFrameCount = 0;
 }
 
 InputManager::~InputManager() {
     if (frozenFrame) {
         glDeleteTextures(1, &frozenFrame);
     }
+    if (fpsTexture) {
+        glDeleteTextures(1, &fpsTexture);
+    }
     glDeleteProgram(textureShaderProgram);
     glDeleteProgram(colorShaderProgram);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+    if (font) {
+        TTF_CloseFont(font);
+    }
+    TTF_Quit();
     fractalManager.reset();
     screenManager.reset();
     SDL_GL_DeleteContext(glContext);
@@ -340,12 +371,29 @@ void InputManager::update() {
     }
 }
 
+void InputManager::drawFPS() {
+    Uint32 currentTime = SDL_GetTicks();
+    fpsFrameCount++;
+    float currentFPS = MathUtils::calculateFPS();
+
+    if (currentTime - lastFPSTime >= Config::FPS_UPDATE_INTERVAL_MS) {
+        OtherRenders::updateFPSTexture(static_cast<int>(currentFPS), font, fpsTexture, fpsWidth, fpsHeight);
+        lastFPSTime = currentTime;
+        fpsFrameCount = 0;
+    }
+
+    OtherRenders::renderFPS(width, height, fpsTexture, fpsWidth, fpsHeight, textureShaderProgram, projection, vao);
+}
+
 void InputManager::draw() {
     glClearColor(Config::BACKGROUND_COLOR.r / 255.0f, Config::BACKGROUND_COLOR.g / 255.0f, Config::BACKGROUND_COLOR.b / 255.0f, Config::BACKGROUND_COLOR.a / 255.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
     fractalManager->renderCurrentFrame();
     
-    OtherRenders::drawSelectionOutline(screenManager->getSelectedScreen(), scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
-    
+    OtherRenders::renderSelectionOutline(screenManager->getSelectedScreen(), scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
+
+    if (Config::SHOW_FPS) drawFPS();
+
     SDL_GL_SwapWindow(window);
 }

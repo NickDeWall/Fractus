@@ -1,5 +1,6 @@
 #include "fractal_manager.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
@@ -159,7 +160,7 @@ void FractalManager::renderCurrentFrame() {
 }
 
 namespace OtherRenders {
-    void drawSelectionOutline(Screen* selected, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao) {
+    void renderSelectionOutline(Screen* selected, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao) {
         if (!selected) return;
 
         int width = scalingMode ? tempWidth : selected->getWidth();
@@ -239,5 +240,83 @@ namespace OtherRenders {
     void cleanupGL(GLuint& vao, GLuint& vbo) {
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
+    }
+
+    bool initFPSTexture(GLuint& fpsTexture) {
+        glGenTextures(1, &fpsTexture);
+        glBindTexture(GL_TEXTURE_2D, fpsTexture);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        
+        unsigned char emptyPixels[4] = {0, 0, 0, 0};
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, emptyPixels);
+        
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return true;
+    }
+
+    bool updateFPSTexture(int fps, TTF_Font* font, GLuint& fpsTexture, int& outWidth, int& outHeight) {
+        if (!font) return false;
+        
+        std::string fpsText = std::to_string(fps);
+        SDL_Surface* surface = TTF_RenderText_Blended(font, fpsText.c_str(), Config::FPS_TEXT_COLOR);
+        if (!surface) return false;
+        
+        SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(surface);
+        
+        if (!rgbaSurface) return false;
+        
+        glBindTexture(GL_TEXTURE_2D, fpsTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbaSurface->w, rgbaSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaSurface->pixels);
+        
+        outWidth = rgbaSurface->w;
+        outHeight = rgbaSurface->h;
+        SDL_FreeSurface(rgbaSurface);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return true;
+    }
+
+    void renderFPS(int screenWidth, int screenHeight, GLuint fpsTexture, int fpsWidth, int fpsHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao) {
+        GLboolean blendEnabled = glIsEnabled(GL_BLEND);
+        GLint srcBlend, dstBlend;
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcBlend);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &dstBlend);
+        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDisable(GL_DEPTH_TEST);
+                
+        glUseProgram(textureShaderProgram);
+        
+        float x = static_cast<float>(screenWidth - fpsWidth - 10);
+        float y = 10.0f;
+                
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
+        model = glm::scale(model, glm::vec3(fpsWidth, fpsHeight, 1.0f));
+        
+        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
+        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+        glUniform4f(glGetUniformLocation(textureShaderProgram, "color"), 1.0f, 1.0f, 1.0f, 1.0f);
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, fpsTexture);
+        glUniform1i(glGetUniformLocation(textureShaderProgram, "tex"), 0);
+        
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUseProgram(0);
+        
+        if (!blendEnabled) {
+            glDisable(GL_BLEND);
+        } else {
+            glBlendFunc(srcBlend, dstBlend);
+        }
     }
 }

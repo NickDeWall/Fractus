@@ -54,6 +54,23 @@ namespace MathUtils {
         if (h < 0.0f) h += 1.0f;
     }
 
+    float calculateFPS() {
+    static int frameCount = 0;
+    static float fps = 0.0f;
+    static Uint32 lastTime = SDL_GetTicks();
+    
+    Uint32 currentTime = SDL_GetTicks();
+    frameCount++;
+    
+    if (currentTime - lastTime > 1000) {
+        fps = static_cast<float>(frameCount) * 1000.0f / static_cast<float>(currentTime - lastTime);
+        frameCount = 0;
+        lastTime = currentTime;
+    }
+
+    return fps;
+    }   
+
     double linearInterpolate(double y0, double y1, double t) {
         return y0 + t * (y1 - y0);
     }
