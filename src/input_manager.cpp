@@ -19,6 +19,7 @@
 #include <iostream>
 #include <ctime>
 #include <fstream>
+#include <string>
 
 InputManager::InputManager() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -35,7 +36,7 @@ InputManager::InputManager() {
     width = displayBounds.w;
     height = displayBounds.h;
     
-    window = SDL_CreateWindow("Fractal Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS);
+    window = SDL_CreateWindow("Fractal Visualizer", displayBounds.x, displayBounds.y, width, height, SDL_WINDOW_OPENGL);
 
     if (!window) {
         SDL_Quit();
@@ -142,6 +143,12 @@ InputManager::InputManager() {
 
     lastFPSTime = SDL_GetTicks();
     fpsFrameCount = 0;
+    lastFrameTime = SDL_GetTicks();
+    deltaTime = 0.0f;
+
+    debugWidth = 0;
+    debugHeight = 0;
+    OtherRenders::initDebugTexture(debugTexture);
 }
 
 InputManager::~InputManager() {
@@ -164,17 +171,27 @@ InputManager::~InputManager() {
     SDL_GL_DeleteContext(glContext);
     SDL_DestroyWindow(window);
     SDL_Quit();
+    if (debugTexture) {
+        glDeleteTextures(1, &debugTexture);
+}
 }
 
 void InputManager::run() {
     running = true;
     while (running) {
+        updateDeltaTime();
         running = handleEvents();
         update();
         draw();
         frameCounter++;
         SDL_Delay(1000 / Config::FPS);
     }
+}
+
+void InputManager::updateDeltaTime() {
+    Uint32 currentTime = SDL_GetTicks();
+    deltaTime = (currentTime - lastFrameTime) / 1000.0f;
+    lastFrameTime = currentTime;
 }
 
 bool InputManager::handleEvents() {
@@ -192,9 +209,6 @@ bool InputManager::handleEvents() {
             if (!scalingMode) {
                 screenManager->handleScaling(event.wheel.y);
             }
-            break;
-        case SDL_KEYDOWN:
-            handleTempScaling(event);
             break;
         case SDL_KEYUP:
             handleExitScaling(event);
@@ -223,28 +237,19 @@ bool InputManager::handleEvents() {
     }
     else if (Config::DEV_TOOLS) {
         if (keyState[SDL_SCANCODE_UP]) {
-            handleKeyPress("cycle_hue");
+            handleKeyPress("cycle_saturation_up");
         }
         else if (keyState[SDL_SCANCODE_DOWN]) {
-            handleKeyPress("cycle_saturation");
+            handleKeyPress("cycle_saturation_down");
+        }
+        else if (keyState[SDL_SCANCODE_RIGHT]) {
+            handleKeyPress("cycle_hue_up");
+        }
+        else if (keyState[SDL_SCANCODE_LEFT]) {
+            handleKeyPress("cycle_hue_down");
         }
     }
     return true;
-}
-
-void InputManager::handleTempScaling(const SDL_Event& event) {
-    if (event.key.keysym.sym == SDLK_SPACE && screenManager->getSelectedScreen()) {
-        scalingMode = true;
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        scaleStartPos = { static_cast<float>(x), static_cast<float>(y) };
-        originalDimensions = {
-            static_cast<float>(screenManager->getSelectedScreen()->getWidth()),
-            static_cast<float>(screenManager->getSelectedScreen()->getHeight())
-        };
-        tempWidth = static_cast<int>(originalDimensions.x);
-        tempHeight = static_cast<int>(originalDimensions.y);
-    }
 }
 
 void InputManager::handleScalingMotion(const SDL_Event& event) {
@@ -290,6 +295,7 @@ void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
             }
             screenManager = std::make_unique<ScreenManager>(*screenManager);
         }
+        screenManager->setSelectedScreen(nullptr);
         break;
     }
 }
@@ -298,66 +304,84 @@ void InputManager::handleKeyPress(const std::string& event) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
     if (event == "rotate_clockwise") {
-        screenManager->handleRotation(-Config::ROTATION_SPEED);
+        screenManager->handleRotation(Config::ROTATION_SPEED * deltaTime);
     }
     else if (event == "rotate_counterclockwise") {
-        screenManager->handleRotation(Config::ROTATION_SPEED);
+        screenManager->handleRotation(-Config::ROTATION_SPEED * deltaTime);
     }
-    else if (event == "cycle_hue") {
-        handleColorRotation();
+    else if (event == "cycle_hue_up") {
+        handleColorRotation(1);
     }
-    else if (event == "cycle_saturation") {
-        handleSaturation();
+    else if (event == "cycle_hue_down") {
+        handleColorRotation(-1);
+    }
+    else if (event == "cycle_saturation_up") {
+        handleSaturation(1);
+    }
+    else if (event == "cycle_saturation_down") {
+        handleSaturation(-1);
     }
     else if (event == "strengthen") {
-        handleStrengthen();
+        handleAlpha(1);
     }
     else if (event == "weaken") {
-        handleWeaken();
+        handleAlpha(-1);
     }
 }
 
-void InputManager::handleColorRotation() {
+void InputManager::handleColorRotation(const int& dir) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
-    SDL_Color color = selected->getColor();
-    float h, s, v;
-    MathUtils::rgbToHsv(color.r, color.g, color.b, h, s, v);
-    h = fmod(h + Config::COLOR_ROTATION_SPEED, 1.0f);
-    Uint8 r, g, b;
+    float h = selected->getTrueH();
+    float s = selected->getTrueS();
+    float v = selected->getTrueV();
+    h = fmod(h + (dir * (Config::COLOR_ROTATION_SPEED * deltaTime)), 1.0f);
+    selected->setTrueH(h);
+    float r, g, b;
     MathUtils::hsvToRgb(h, s, v, r, g, b);
-    SDL_Color newColor = { r, g, b, color.a };
+    SDL_Color newColor = { 
+        static_cast<Uint8>(std::round(r)), 
+        static_cast<Uint8>(std::round(g)), 
+        static_cast<Uint8>(std::round(b)), 
+        static_cast<Uint8>(std::round(selected->getTrueA()))
+    };
     selected->setColor(newColor);
 }
 
-void InputManager::handleSaturation() {
+
+void InputManager::handleSaturation(const int& dir) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
-    SDL_Color color = selected->getColor();
-    float h, s, v;
-    MathUtils::rgbToHsv(color.r, color.g, color.b, h, s, v);
-    s = fmod(static_cast<float>(s) - Config::SATURATION_CYCLE_SPEED + 1.0f, 1.0f);
-    Uint8 r, g, b;
+    float h = selected->getTrueH();
+    float s = selected->getTrueS();
+    float v = selected->getTrueV();
+    if (dir == 1)
+        s = std::min(s + (Config::SATURATION_CYCLE_SPEED * deltaTime), 1.0f);
+    else if (dir == -1)
+        s = std::max(s - (Config::SATURATION_CYCLE_SPEED * deltaTime), 0.0f);
+    selected->setTrueS(s);
+    float r, g, b;
     MathUtils::hsvToRgb(h, s, v, r, g, b);
-    SDL_Color newColor = { r, g, b, color.a };
+    SDL_Color newColor = { 
+        static_cast<Uint8>(std::round(r)), 
+        static_cast<Uint8>(std::round(g)), 
+        static_cast<Uint8>(std::round(b)), 
+        static_cast<Uint8>(std::round(selected->getTrueA()))};
     selected->setColor(newColor);
 }
 
-void InputManager::handleStrengthen() {
+void InputManager::handleAlpha(const int& dir) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
+    
+    float currentAlpha = selected->getTrueA();
+    float change = Config::ALPHA_CHANGE_SPEED * deltaTime * dir;
+    float newAlpha = std::clamp(currentAlpha + change, 0.0f, static_cast<float>(Config::MAX_SCREEN_ALPHA));
+    
+    selected->setTrueA(newAlpha);
+    
     SDL_Color color = selected->getColor();
-    Uint8 newAlpha = static_cast<int>(std::min(static_cast<float>(Config::MAX_SCREEN_ALPHA), std::ceil(color.a + Config::ALPHA_CHANGE_SPEED)));
-    SDL_Color newColor = { color.r, color.g, color.b, newAlpha };
-    selected->setColor(newColor);
-}
-
-void InputManager::handleWeaken() {
-    Screen* selected = screenManager->getSelectedScreen();
-    if (!selected) return;
-    SDL_Color color = selected->getColor();
-    Uint8 newAlpha = std::max(0.0f, static_cast<float>(color.a - Config::ALPHA_CHANGE_SPEED));
-    SDL_Color newColor = { color.r, color.g, color.b, newAlpha };
+    SDL_Color newColor = { color.r, color.g, color.b, static_cast<Uint8>(std::round(newAlpha)) };
     selected->setColor(newColor);
 }
 
@@ -393,7 +417,18 @@ void InputManager::draw() {
     
     OtherRenders::renderSelectionOutline(screenManager->getSelectedScreen(), scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
 
-    if (Config::SHOW_FPS) drawFPS();
+    if (Config::SHOW_FPS) {
+        drawFPS();
+    }
+
+    if (Config::DEV_TOOLS) {
+        OtherRenders::renderDebugText(width, height, debugTexture, debugWidth, debugHeight, textureShaderProgram, projection, vao);
+    }
 
     SDL_GL_SwapWindow(window);
+}
+
+void InputManager::setDebugText(const std::string& text) {
+    currentDebugText = text;
+    OtherRenders::updateDebugTexture(currentDebugText, font, debugTexture, debugWidth, debugHeight);
 }

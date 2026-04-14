@@ -6,7 +6,7 @@
 #include <stdexcept>
 
 namespace MathUtils {
-    void hsvToRgb(float h, float s, float v, Uint8& r, Uint8& g, Uint8& b) {
+    void hsvToRgb(float h, float s, float v, float& r, float& g, float& b) {
         if (s <= 0.0f) {
             r = g = b = static_cast<Uint8>(v * 255);
             return;
@@ -29,7 +29,7 @@ namespace MathUtils {
         }
     }
 
-    void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float& h, float& s, float& v) {
+    void rgbToHsv(float r, float g, float b, float& h, float& s, float& v) {
         float rf = r / 255.0f;
         float gf = g / 255.0f;
         float bf = b / 255.0f;

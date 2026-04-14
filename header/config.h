@@ -4,7 +4,7 @@
 namespace Config {
     constexpr int SCREEN_WIDTH = 1600;
     constexpr int SCREEN_HEIGHT = 950;
-    constexpr int FPS = 120;
+    constexpr int FPS = 600;
 
     constexpr SDL_Color DEFAULT_SCREEN_COLOR = { 66, 135, 245, 15 };
     constexpr float INITIAL_SCREEN_SIZE_RATIO = 0.25f;
@@ -16,10 +16,10 @@ namespace Config {
     constexpr float SCALE_FACTOR_DOWN = 0.92f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
-    constexpr float ROTATION_SPEED = 0.8f;
-    constexpr float COLOR_ROTATION_SPEED = 0.002f;
-    constexpr float SATURATION_CYCLE_SPEED = 0.004f;
-    constexpr float ALPHA_CHANGE_SPEED = 0.01f;
+    constexpr float ROTATION_SPEED = 90.0f;
+    constexpr float COLOR_ROTATION_SPEED = 0.2f;
+    constexpr float SATURATION_CYCLE_SPEED = 1.4f;
+    constexpr float ALPHA_CHANGE_SPEED = 20.0f;
     constexpr Uint8 MAX_SCREEN_ALPHA = 70;
 
     constexpr const char* FRAME_SAVE_DIR = "frames";

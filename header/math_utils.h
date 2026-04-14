@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 namespace MathUtils {
-    void hsvToRgb(float h, float s, float v, Uint8& r, Uint8& g, Uint8& b);
-    void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float& h, float& s, float& v);
+    void hsvToRgb(float h, float s, float v, float& r, float& g, float& b);
+    void rgbToHsv(float r, float g, float b, float& h, float& s, float& v);
     float calculateFPS();
     double linearInterpolate(double y0, double y1, double t);
     double linearInterpolate(const std::vector<double>& x, const std::vector<double>& y, double xi);

@@ -37,24 +37,31 @@ private:
     int fpsWidth, fpsHeight;
     Uint32 lastFPSTime;
     int fpsFrameCount;
+    Uint32 lastFrameTime;
+    float deltaTime;
+
+    // Debug variables
+    GLuint debugTexture;
+    int debugWidth, debugHeight;
+    std::string currentDebugText;
 
 public:
     InputManager();
     ~InputManager();
     void run();
+    void updateDeltaTime();
 
 private:
     bool handleEvents();
-    void handleTempScaling(const SDL_Event& event);
     void handleScalingMotion(const SDL_Event& event);
     void handleExitScaling(const SDL_Event& event);
     void handleMouseClick(const SDL_MouseButtonEvent& event);
     void handleKeyPress(const std::string& event);
-    void handleColorRotation();
-    void handleSaturation();
-    void handleStrengthen();
-    void handleWeaken();
+    void handleColorRotation(const int& dir);
+    void handleSaturation(const int& dir);
+    void handleAlpha(const int& dir);
     void update();
     void drawFPS();
     void draw();
+    void setDebugText(const std::string& text);
 };

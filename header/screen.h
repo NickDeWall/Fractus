@@ -13,6 +13,13 @@ public:
     void setHeight(int height);
     void setRotation(float rotation);
     void setColor(SDL_Color color);
+    void setTrueR(float r);
+    void setTrueG(float g);
+    void setTrueB(float b);
+    void setTrueA(float a);
+    void setTrueH(float h);
+    void setTrueS(float s);
+    void setTrueV(float v);
 
     // Getters
     float getX() const;
@@ -21,6 +28,13 @@ public:
     int getHeight() const;
     float getRotation() const;
     SDL_Color getColor() const;
+    float getTrueR() const;
+    float getTrueG() const;
+    float getTrueB() const;
+    float getTrueA() const;
+    float getTrueH() const;
+    float getTrueS() const;
+    float getTrueV() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
 
@@ -34,5 +48,15 @@ private:
     int origWidth;
     int origHeight;
     float rotation;
+
+    float trueR;
+    float trueG;
+    float trueB;
+    float trueA;
+
+    float trueH;
+    float trueS;
+    float trueV;
+    
     SDL_Color color;
 };

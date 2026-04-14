@@ -15,6 +15,7 @@ public:
     void handleRotation(float direction);
 
     Screen* getSelectedScreen() const { return selectedScreen; }
+    void setSelectedScreen(Screen* screen) { selectedScreen = screen; }
     const std::vector<Screen>& getScreens() const { return screens; }
 
 private:

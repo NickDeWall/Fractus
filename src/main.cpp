@@ -1,4 +1,5 @@
 #include "input_manager.h"
+#include <iostream>
 
 #ifdef _WIN32
 #undef main

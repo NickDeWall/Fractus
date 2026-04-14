@@ -6,6 +6,7 @@
 #include "screen.h"
 #include "config.h"
 #include <SDL2/SDL_ttf.h>
+#include <string>
 
 class FractalManager {
 public:
@@ -42,4 +43,7 @@ namespace OtherRenders {
     bool initFPSTexture(GLuint& fpsTexture);
     bool updateFPSTexture(int fps, TTF_Font* font, GLuint& fpsTexture, int& outWidth, int& outHeight);
     void renderFPS(int screenWidth, int screenHeight, GLuint fpsTexture, int fpsWidth, int fpsHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao);
+    bool initDebugTexture(GLuint& debugTexture);
+    bool updateDebugTexture(const std::string& debugText, TTF_Font* font, GLuint& debugTexture, int& outWidth, int& outHeight);
+    void renderDebugText(int screenWidth, int screenHeight, GLuint debugTexture, int debugWidth, int debugHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao);
 }

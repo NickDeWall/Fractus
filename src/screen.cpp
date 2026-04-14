@@ -1,12 +1,18 @@
 #include "screen.h"
 #include <cmath>
 #include <algorithm>
+#include <math_utils.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 Screen::Screen(float x, float y, int width, int height, float rotation, SDL_Color color)
     : xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation), color(color) {
+    trueR = static_cast<float>(color.r);
+    trueG = static_cast<float>(color.g);
+    trueB = static_cast<float>(color.b);
+    trueA = static_cast<float>(color.a);
+    MathUtils::rgbToHsv(trueR, trueG, trueB, trueH, trueS, trueV);
 }
 
 void Screen::setX(float x) {
@@ -31,7 +37,37 @@ void Screen::setRotation(float rot) {
 
 void Screen::setColor(SDL_Color col) {
     color = col;
+    
 }
+
+void Screen::setTrueR(float r) {
+    trueR = r;
+}
+
+void Screen::setTrueG(float g) {
+    trueG = g;
+}
+
+void Screen::setTrueB(float b) {
+    trueB = b;
+}
+
+void Screen::setTrueA(float a) {
+    trueA = a;
+}
+
+void Screen::setTrueH(float h) {
+    trueH = h;
+}
+
+void Screen::setTrueS(float s) {
+    trueS = s;
+}
+
+void Screen::setTrueV(float v) {
+    trueV = v;
+}
+
 
 float Screen::getX() const {
     return xCoord;
@@ -55,6 +91,34 @@ float Screen::getRotation() const {
 
 SDL_Color Screen::getColor() const {
     return color;
+}
+
+float Screen::getTrueR() const {
+    return trueR;
+}
+
+float Screen::getTrueG() const {
+    return trueG;
+}
+
+float Screen::getTrueB() const {
+    return trueB;
+}
+
+float Screen::getTrueA() const {
+    return trueA;
+}
+
+float Screen::getTrueH() const {
+    return trueH; 
+}
+
+float Screen::getTrueS() const {
+    return trueS; 
+}
+
+float Screen::getTrueV() const {
+    return trueV; 
 }
 
 SDL_Color Screen::getOutlineColor() const {
