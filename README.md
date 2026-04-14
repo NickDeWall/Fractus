@@ -2,6 +2,10 @@
 Real-time fractal-generating software
 
 
+## Download:
+This project is statically linked, so downloading the executable in build/release is adaquate for running the project on anything running windows. For linux machines, follow the directions in the build-linux folder.
+
+
 ## How Does it Work:
 The program uses C++ with OpenGL rendering. The user is able to create sub-screens that have the same aspect ratio of the user's display. The sub-screens are able to be moved, scaled, and rotated by the user. They have a very low opacity and can be stacked on top of each other. Every frame, the entire screen is captured and pasted on top of each of the sub-screens. Because of this, self-similar fractals can be generated with ease. 
 
@@ -28,7 +32,7 @@ When I made the switch to C++, I was expecting it to be a smooth process since t
 
 
 ## Working on Implementing:
-I am trying to statically link my program so that it can be run on all computers without an install, but this seems to be challenging.
+I am working on adding interpolation algorithms to certain actaions; For example I would like the scaling of sub-screens to feel smoother.
 
 ## Examples:
 
