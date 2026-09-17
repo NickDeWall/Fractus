@@ -1,13 +1,16 @@
-
 cmake_minimum_required(VERSION 3.10)
 
-project(fractus2)
+project(fractus)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 add_executable(fractus
     ${PROJECT_SOURCE_DIR}/../src/main.cpp
+    ${PROJECT_SOURCE_DIR}/../src/input_manager.cpp
     ${PROJECT_SOURCE_DIR}/../src/fractal_manager.cpp
     ${PROJECT_SOURCE_DIR}/../src/math_utils.cpp
     ${PROJECT_SOURCE_DIR}/../src/screen.cpp
@@ -23,5 +26,5 @@ target_link_libraries(fractus PUBLIC
     GLEW
     GL
     SDL2
+    SDL2_ttf
 )
-

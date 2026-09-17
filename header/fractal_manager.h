@@ -17,12 +17,15 @@ public:
     void renderCurrentFrame();
     GLuint loadPreviousFrame(int frameNum);
     void saveFrame(GLuint texture, int frameNum);
+    void resize(int newWidth, int newHeight, const glm::mat4& newProjection);
     
 
 private:
     GLuint createTexture(int w, int h);
 
     int width, height;
+    int renderWidth, renderHeight;
+    static void computeRenderSize(int w, int h, int& outW, int& outH);
     GLuint textureShaderProgram;
     GLuint colorShaderProgram;
     glm::mat4 projection;

@@ -104,6 +104,29 @@ void ScreenManager::handleRotation(float direction) {
     }
 }
 
+void ScreenManager::resize(int newWidth, int newHeight) {
+    if (newWidth <= 0 || newHeight <= 0) return;
+    if (width <= 0 || height <= 0) {
+        width = newWidth;
+        height = newHeight;
+        return;
+    }
+    if (newWidth == width && newHeight == height) return;
+
+    const float scaleX = static_cast<float>(newWidth) / static_cast<float>(width);
+    const float scaleY = static_cast<float>(newHeight) / static_cast<float>(height);
+
+    for (auto& screen : screens) {
+        screen.setX(screen.getX() * scaleX);
+        screen.setY(screen.getY() * scaleY);
+        screen.setWidth(std::max(1, static_cast<int>(std::lround(screen.getWidth() * scaleX))));
+        screen.setHeight(std::max(1, static_cast<int>(std::lround(screen.getHeight() * scaleY))));
+    }
+
+    width = newWidth;
+    height = newHeight;
+}
+
 SDL_FPoint ScreenManager::rotatePoint(float cx, float cy, float x, float y, float angle) {
     float angleRad = angle * Config::PI / 180.0f;
     float dx = x - cx;

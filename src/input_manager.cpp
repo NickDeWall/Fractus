@@ -30,31 +30,30 @@ InputManager::InputManager() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    int displayIndex = 0;
-    SDL_Rect displayBounds;
-    if (SDL_GetDisplayBounds(0, &displayBounds) != 0) {
-        displayBounds = { SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                          Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT };
-    }
-
-    // Windowed and resizable while you're debugging. Go fullscreen later,
-    // once you can confirm the loop is healthy.
-    window = SDL_CreateWindow("Fractal Visualizer",
+    window = SDL_CreateWindow("Fractus",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT,
                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-    if (!window) { SDL_Quit(); throw std::runtime_error(SDL_GetError()); }
 
+    if (!window) {
+        SDL_Quit();
+        throw std::runtime_error(SDL_GetError());
+    }
     glContext = SDL_GL_CreateContext(window);
-    if (!glContext) { SDL_DestroyWindow(window); SDL_Quit(); throw std::runtime_error(SDL_GetError()); }
+    if (!glContext) {
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        throw std::runtime_error(SDL_GetError());
+    }
 
-    // Use the drawable size, not the requested size — they differ under high DPI.
     SDL_GL_GetDrawableSize(window, &width, &height);
 
-    // Adaptive vsync, falling back to plain vsync. This is the single most
-    // important line for the symptom you're describing.
-    if (SDL_GL_SetSwapInterval(-1) != 0) {
-        SDL_GL_SetSwapInterval(1);
+    if (Config::VSYNC) {
+        if (SDL_GL_SetSwapInterval(-1) != 0) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    } else {
+        SDL_GL_SetSwapInterval(0);
     }
 
     glewExperimental = GL_TRUE;
@@ -64,14 +63,7 @@ InputManager::InputManager() {
         SDL_Quit();
         throw std::runtime_error("Failed to initialize GLEW");
     }
-    glGetError();  // swallow GLEW's spurious GL_INVALID_ENUM
-
-    if (glewInit() != GLEW_OK) {
-        SDL_GL_DeleteContext(glContext);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        throw std::runtime_error("Failed to initialize GLEW");
-    }
+    glGetError();
 
     if (TTF_Init() == -1) {
         SDL_GL_DeleteContext(glContext);
@@ -161,12 +153,22 @@ InputManager::InputManager() {
 
     lastFPSTime = SDL_GetTicks();
     fpsFrameCount = 0;
-    lastFrameTime = SDL_GetTicks();
+    lastFrameCounter = SDL_GetPerformanceCounter();
     deltaTime = 0.0f;
 
     debugWidth = 0;
     debugHeight = 0;
     OtherRenders::initDebugTexture(debugTexture);
+
+    if (Config::WRITE_LOG_FILE) {
+        logStartupInfo();
+    }
+
+    framesUntilFullscreen = Config::START_FULLSCREEN ? Config::FULLSCREEN_DELAY_FRAMES : -1;
+    if (framesUntilFullscreen == 0) {
+        setFullscreen(true);
+        framesUntilFullscreen = -1;
+    }
 }
 
 InputManager::~InputManager() {
@@ -196,28 +198,131 @@ InputManager::~InputManager() {
 
 void InputManager::run() {
     running = true;
-    const Uint32 targetMs = (Config::FPS > 0) ? (1000u / Config::FPS) : 0u;
+
+    const Uint64 counterFreq = SDL_GetPerformanceFrequency();
+    const Uint64 targetTicks = (Config::FPS > 0) ? (counterFreq / static_cast<Uint64>(Config::FPS)) : 0u;
 
     while (running) {
-        const Uint32 frameStart = SDL_GetTicks();
+        const Uint64 frameStart = SDL_GetPerformanceCounter();
 
         updateDeltaTime();
         running = handleEvents();
+        if (!running) break;
+
+        if (pendingResize) {
+            pendingResize = false;
+            handleResize();
+        }
+
+        if (minimized) {
+            SDL_Delay(50);
+            lastFrameCounter = SDL_GetPerformanceCounter();
+            continue;
+        }
+
         update();
         draw();
         frameCounter++;
 
-        const Uint32 elapsed = SDL_GetTicks() - frameStart;
-        if (targetMs > elapsed) {
-            SDL_Delay(targetMs - elapsed);
+        if (framesUntilFullscreen > 0 && --framesUntilFullscreen == 0) {
+            setFullscreen(true);
+            framesUntilFullscreen = -1;
+        }
+
+        if (targetTicks > 0) {
+            const Uint64 oneMs = counterFreq / 1000;
+            Uint64 elapsed = SDL_GetPerformanceCounter() - frameStart;
+            if (targetTicks > elapsed + oneMs) {
+                const Uint64 sleepTicks = targetTicks - elapsed - oneMs;
+                SDL_Delay(static_cast<Uint32>((sleepTicks * 1000) / counterFreq));
+            }
+            while ((SDL_GetPerformanceCounter() - frameStart) < targetTicks) {
+                // spin
+            }
         }
     }
 }
 
 void InputManager::updateDeltaTime() {
-    Uint32 currentTime = SDL_GetTicks();
-    deltaTime = std::min((currentTime - lastFrameTime) / 1000.0f, 0.1f);
-    lastFrameTime = currentTime;
+    const Uint64 currentCounter = SDL_GetPerformanceCounter();
+    const Uint64 freq = SDL_GetPerformanceFrequency();
+    const float elapsed = static_cast<float>(currentCounter - lastFrameCounter) / static_cast<float>(freq);
+    deltaTime = std::min(elapsed, 0.1f);
+    lastFrameCounter = currentCounter;
+}
+
+bool InputManager::isFullscreen() const {
+    return borderlessFullscreen;
+}
+
+void InputManager::setFullscreen(bool enable) {
+    if (enable == borderlessFullscreen) return;
+
+    if (enable) {
+        SDL_GetWindowPosition(window, &windowedRect.x, &windowedRect.y);
+        SDL_GetWindowSize(window, &windowedRect.w, &windowedRect.h);
+
+        SDL_Rect bounds;
+        const int displayIndex = SDL_GetWindowDisplayIndex(window);
+        if (SDL_GetDisplayBounds(displayIndex < 0 ? 0 : displayIndex, &bounds) != 0) {
+            setDebugText(std::string("Display bounds failed: ") + SDL_GetError());
+            return;
+        }
+
+        const int inset = Config::FULLSCREEN_INSET;
+        SDL_SetWindowBordered(window, SDL_FALSE);
+        SDL_SetWindowPosition(window, bounds.x + inset, bounds.y + inset);
+        SDL_SetWindowSize(window, bounds.w - 2 * inset, bounds.h - 2 * inset);
+        borderlessFullscreen = true;
+    } else {
+        SDL_SetWindowBordered(window, SDL_TRUE);
+        if (windowedRect.w > 0 && windowedRect.h > 0) {
+            SDL_SetWindowSize(window, windowedRect.w, windowedRect.h);
+            SDL_SetWindowPosition(window, windowedRect.x, windowedRect.y);
+        }
+        borderlessFullscreen = false;
+    }
+}
+
+void InputManager::toggleFullscreen() {
+    setFullscreen(!borderlessFullscreen);
+}
+
+void InputManager::logStartupInfo() {
+    std::ofstream log(Config::LOG_FILE, std::ios::trunc);
+    if (!log) return;
+
+    const auto glString = [](GLenum name) -> std::string {
+        const GLubyte* value = glGetString(name);
+        return value ? reinterpret_cast<const char*>(value) : "(unavailable)";
+    };
+
+    log << "VENDOR:        " << glString(GL_VENDOR) << "\n"
+        << "RENDERER:      " << glString(GL_RENDERER) << "\n"
+        << "GL_VERSION:    " << glString(GL_VERSION) << "\n"
+        << "GLSL_VERSION:  " << glString(GL_SHADING_LANGUAGE_VERSION) << "\n"
+        << "swap interval: " << SDL_GL_GetSwapInterval() << "\n"
+        << "drawable:      " << width << "x" << height << "\n";
+}
+
+
+void InputManager::handleResize() {
+    int newWidth = 0, newHeight = 0;
+    SDL_GL_GetDrawableSize(window, &newWidth, &newHeight);
+
+    if (newWidth <= 0 || newHeight <= 0) return;
+    if (newWidth == width && newHeight == height) return;
+
+    screenManager->resize(newWidth, newHeight);
+
+    width = newWidth;
+    height = newHeight;
+
+    glViewport(0, 0, width, height);
+    projection = glm::ortho(0.0f, static_cast<float>(width),
+                            static_cast<float>(height), 0.0f, -1.0f, 1.0f);
+
+    fractalManager->resize(width, height, projection);
 }
 
 bool InputManager::handleEvents() {
@@ -234,6 +339,29 @@ bool InputManager::handleEvents() {
         case SDL_MOUSEWHEEL:
             if (!scalingMode) {
                 screenManager->handleScaling(event.wheel.y);
+            }
+            break;
+        case SDL_WINDOWEVENT:
+            switch (event.window.event) {
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                pendingResize = true;
+                break;
+            case SDL_WINDOWEVENT_MINIMIZED:
+                minimized = true;
+                break;
+            case SDL_WINDOWEVENT_RESTORED:
+            case SDL_WINDOWEVENT_SHOWN:
+                minimized = false;
+                break;
+            }
+            break;
+        case SDL_KEYDOWN:
+            if (event.key.repeat == 0) {
+                const SDL_Keycode sym = event.key.keysym.sym;
+                if (sym == SDLK_RSHIFT || sym == SDLK_F11 ||
+                    (sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT))) {
+                    toggleFullscreen();
+                }
             }
             break;
         case SDL_KEYUP:

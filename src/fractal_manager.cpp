@@ -7,10 +7,24 @@
 #include <iostream>
 #include <string>
 
+void FractalManager::computeRenderSize(int w, int h, int& outW, int& outH) {
+    const float scale = (Config::RENDER_SCALE > 0.0f) ? Config::RENDER_SCALE : 1.0f;
+    outW = std::max(1, static_cast<int>(w * scale));
+    outH = std::max(1, static_cast<int>(h * scale));
+    const float limit = std::min(
+        static_cast<float>(Config::MAX_RENDER_WIDTH) / static_cast<float>(outW),
+        static_cast<float>(Config::MAX_RENDER_HEIGHT) / static_cast<float>(outH));
+    if (limit < 1.0f) {
+        outW = std::max(1, static_cast<int>(outW * limit));
+        outH = std::max(1, static_cast<int>(outH * limit));
+    }
+}
+
 FractalManager::FractalManager(int width, int height, GLuint textureShader, GLuint colorShader, const glm::mat4& projection)
     : width(width), height(height), textureShaderProgram(textureShader), colorShaderProgram(colorShader) {
-    currentTexture = createTexture(width, height);
-    previousTexture = createTexture(width, height);
+    computeRenderSize(width, height, renderWidth, renderHeight);
+    currentTexture = createTexture(renderWidth, renderHeight);
+    previousTexture = createTexture(renderWidth, renderHeight);
     
     this->projection = projection;
 
@@ -18,7 +32,7 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
     
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, previousTexture, 0);
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, renderWidth, renderHeight);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -66,7 +80,7 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, currentTexture, 0);
     
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, renderWidth, renderHeight);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -126,6 +140,74 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
     std::swap(currentTexture, previousTexture);
     
     return previousTexture;
+}
+
+void FractalManager::resize(int newWidth, int newHeight, const glm::mat4& newProjection) {
+    projection = newProjection;
+
+    if (newWidth <= 0 || newHeight <= 0) return;
+
+    int newRenderWidth = 0, newRenderHeight = 0;
+    computeRenderSize(newWidth, newHeight, newRenderWidth, newRenderHeight);
+
+    const bool renderSizeChanged =
+        (newRenderWidth != renderWidth || newRenderHeight != renderHeight);
+    width = newWidth;
+    height = newHeight;
+    if (!renderSizeChanged) return;
+
+    GLuint newCurrent = createTexture(newRenderWidth, newRenderHeight);
+    GLuint newPrevious = createTexture(newRenderWidth, newRenderHeight);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, newRenderWidth, newRenderHeight);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, newCurrent, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, newPrevious, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+    glDisable(GL_BLEND);
+
+    glUseProgram(textureShaderProgram);
+
+    glm::mat4 blitProjection = glm::ortho(0.0f, static_cast<float>(newRenderWidth),
+                                          static_cast<float>(newRenderHeight), 0.0f, -1.0f, 1.0f);
+    glm::mat4 model = glm::scale(glm::mat4(1.0f),
+                                 glm::vec3(static_cast<float>(newRenderWidth),
+                                           static_cast<float>(newRenderHeight), 1.0f));
+
+    GLint projLoc = glGetUniformLocation(textureShaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(textureShaderProgram, "model");
+    GLint texLoc = glGetUniformLocation(textureShaderProgram, "tex");
+    GLint colorLoc = glGetUniformLocation(textureShaderProgram, "color");
+
+    if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &blitProjection[0][0]);
+    if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+    if (colorLoc != -1) glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, previousTexture);
+    if (texLoc != -1) glUniform1i(texLoc, 0);
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (blendWasEnabled) glEnable(GL_BLEND);
+
+    glDeleteTextures(1, &currentTexture);
+    glDeleteTextures(1, &previousTexture);
+
+    currentTexture = newCurrent;
+    previousTexture = newPrevious;
+    renderWidth = newRenderWidth;
+    renderHeight = newRenderHeight;
 }
 
 void FractalManager::renderCurrentFrame() {

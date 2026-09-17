@@ -21,6 +21,8 @@ The program uses C++ with OpenGL rendering. The user is able to create sub-scree
 | W/S | Increase/Decrease alpha of selected sub-screen |
 | Up/Down Arrow | Saturate/Desaturate selected sub-screen |
 | Right/Left Arrow | Cycle hue of selected sub-screen |
+| Esc | Exit program |
+| Right Shift | Enter windowed mode |
 
 
 ## Optimizations
@@ -32,7 +34,7 @@ When I made the switch to C++, I was expecting it to be a smooth process since t
 
 
 ## Working on Implementing:
-I am working on adding interpolation algorithms to certain actaions; For example I would like the scaling of sub-screens to feel smoother.
+I am working on adding interpolation algorithms to certain actions; For example I would like the scaling of sub-screens to feel smoother.
 
 ## Examples:
 

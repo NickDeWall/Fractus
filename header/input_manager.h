@@ -21,6 +21,11 @@ private:
     std::unique_ptr<ScreenManager> screenManager;
     
     bool running = true;
+    bool minimized = false;
+    bool pendingResize = false;
+    bool borderlessFullscreen = false;
+    int framesUntilFullscreen = -1;
+    SDL_Rect windowedRect = { 0, 0, 0, 0 };
     int frameCounter;
     GLuint currentFrame;
     
@@ -37,7 +42,7 @@ private:
     int fpsWidth, fpsHeight;
     Uint32 lastFPSTime;
     int fpsFrameCount;
-    Uint32 lastFrameTime;
+    Uint64 lastFrameCounter;
     float deltaTime;
 
     // Debug variables
@@ -53,6 +58,11 @@ public:
 
 private:
     bool handleEvents();
+    void toggleFullscreen();
+    void setFullscreen(bool enable);
+    bool isFullscreen() const;
+    void handleResize();
+    void logStartupInfo();
     void handleScalingMotion(const SDL_Event& event);
     void handleExitScaling(const SDL_Event& event);
     void handleMouseClick(const SDL_MouseButtonEvent& event);

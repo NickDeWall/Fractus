@@ -29,6 +29,22 @@ namespace Config {
 
     constexpr SDL_Color BACKGROUND_COLOR = { 0, 0, 0, 255 };
 
+    constexpr bool START_FULLSCREEN = true;
+
+    constexpr int FULLSCREEN_DELAY_FRAMES = 3;
+
+    constexpr int FULLSCREEN_INSET = 0;
+
+    constexpr bool VSYNC = false;
+
+    constexpr bool WRITE_LOG_FILE = false;
+    constexpr const char* LOG_FILE = "fractal_visualizer_log.txt";
+
+    constexpr float RENDER_SCALE = 1.0f;
+
+    constexpr int MAX_RENDER_WIDTH = 2560;
+    constexpr int MAX_RENDER_HEIGHT = 1440;
+
     constexpr int MAX_CACHED_SURFACES = 20;
     constexpr bool USE_HARDWARE_ACCEL = true;
 
