@@ -32,22 +32,40 @@ InputManager::InputManager() {
 
     int displayIndex = 0;
     SDL_Rect displayBounds;
-    SDL_GetDisplayBounds(displayIndex, &displayBounds);
-    width = displayBounds.w;
-    height = displayBounds.h;
-    
-    window = SDL_CreateWindow("Fractal Visualizer", displayBounds.x, displayBounds.y, width, height, SDL_WINDOW_OPENGL);
-
-    if (!window) {
-        SDL_Quit();
-        throw std::runtime_error(SDL_GetError());
+    if (SDL_GetDisplayBounds(0, &displayBounds) != 0) {
+        displayBounds = { SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                          Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT };
     }
+
+    // Windowed and resizable while you're debugging. Go fullscreen later,
+    // once you can confirm the loop is healthy.
+    window = SDL_CreateWindow("Fractal Visualizer",
+                              SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                              Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    if (!window) { SDL_Quit(); throw std::runtime_error(SDL_GetError()); }
+
     glContext = SDL_GL_CreateContext(window);
-    if (!glContext) {
+    if (!glContext) { SDL_DestroyWindow(window); SDL_Quit(); throw std::runtime_error(SDL_GetError()); }
+
+    // Use the drawable size, not the requested size — they differ under high DPI.
+    SDL_GL_GetDrawableSize(window, &width, &height);
+
+    // Adaptive vsync, falling back to plain vsync. This is the single most
+    // important line for the symptom you're describing.
+    if (SDL_GL_SetSwapInterval(-1) != 0) {
+        SDL_GL_SetSwapInterval(1);
+    }
+
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        SDL_GL_DeleteContext(glContext);
         SDL_DestroyWindow(window);
         SDL_Quit();
-        throw std::runtime_error(SDL_GetError());
+        throw std::runtime_error("Failed to initialize GLEW");
     }
+    glGetError();  // swallow GLEW's spurious GL_INVALID_ENUM
+
     if (glewInit() != GLEW_OK) {
         SDL_GL_DeleteContext(glContext);
         SDL_DestroyWindow(window);
@@ -178,19 +196,27 @@ InputManager::~InputManager() {
 
 void InputManager::run() {
     running = true;
+    const Uint32 targetMs = (Config::FPS > 0) ? (1000u / Config::FPS) : 0u;
+
     while (running) {
+        const Uint32 frameStart = SDL_GetTicks();
+
         updateDeltaTime();
         running = handleEvents();
         update();
         draw();
         frameCounter++;
-        SDL_Delay(1000 / Config::FPS);
+
+        const Uint32 elapsed = SDL_GetTicks() - frameStart;
+        if (targetMs > elapsed) {
+            SDL_Delay(targetMs - elapsed);
+        }
     }
 }
 
 void InputManager::updateDeltaTime() {
     Uint32 currentTime = SDL_GetTicks();
-    deltaTime = (currentTime - lastFrameTime) / 1000.0f;
+    deltaTime = std::min((currentTime - lastFrameTime) / 1000.0f, 0.1f);
     lastFrameTime = currentTime;
 }
 

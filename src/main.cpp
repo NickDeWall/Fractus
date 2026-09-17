@@ -12,6 +12,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     catch (const std::exception& e) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fractus failed to start", e.what(), nullptr);
         return 1;
     }
 }
