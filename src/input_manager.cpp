@@ -15,6 +15,7 @@
 #include "math_utils.h"
 #include "shader_manager.h"
 #include "input_manager.h"
+#include "font_data.h"
 #include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <ctime>
@@ -72,14 +73,7 @@ InputManager::InputManager() {
         throw std::runtime_error("Failed to initialize SDL_ttf");
     }
 
-    font = TTF_OpenFont("..\\..\\assets\\fonts\\BebasNeue-Regular.ttf", 24);
-    if (!font) {
-        TTF_Quit();
-        SDL_GL_DeleteContext(glContext);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        throw std::runtime_error("Failed to load font");
-    }
+    font = TTF_OpenFontRW(SDL_RWFromConstMem(BebasNeue_Regular_ttf, static_cast<int>(BebasNeue_Regular_ttf_len)), 1, 24);
 
     fpsWidth = Config::FPS_WIDTH_RATIO * width;
     fpsHeight = Config::FPS_WIDTH_RATIO * height;

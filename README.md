@@ -3,7 +3,7 @@ Real-time fractal-generating software
 
 
 ## Download:
-This project is statically linked, so downloading the executable in build/release is adaquate for running the project on anything running windows. For linux machines, follow the directions in the build-linux folder.
+Download `Fractus.exe` from the latest release on the Releases page and run it; no installation needed. Windows may show a SmartScreen warning because the exe isn't signed; click "More info" then "Run anyway". For linux machines, follow the directions in the build-linux folder.
 
 
 ## How Does it Work:
