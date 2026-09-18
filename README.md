@@ -34,7 +34,7 @@ When I made the switch to C++, I was expecting it to be a smooth process since t
 
 
 ## Working on Implementing:
-I am working on adding interpolation algorithms to certain actions; For example I would like the scaling of sub-screens to feel smoother.
+Working on different display functions for screens. For example, how would a screen using a mathamatical alteration for it's display interact with a normal screen?
 
 ## Examples:
 
