@@ -7,7 +7,7 @@
             "command": "g++.exe",
             "args": [
                 "-DGLEW_STATIC",
-                "-g",
+                "-s",
                 "-static",
                 "-o",
                 "${workspaceFolder}\\build\\release\\Fractus.exe",
