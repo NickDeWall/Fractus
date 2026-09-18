@@ -87,20 +87,20 @@ void ScreenManager::handleScaling(int scrollY) {
     if (selectedScreen && scrollY) {
         float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
 
-        int newWidth = static_cast<int>(selectedScreen->getWidth() * scaleFactor);
-        int newHeight = static_cast<int>(selectedScreen->getHeight() * scaleFactor);
+        int newWidth = static_cast<int>(selectedScreen->getTargetWidth() * scaleFactor);
+        int newHeight = static_cast<int>(selectedScreen->getTargetHeight() * scaleFactor);
 
         newWidth = std::max(10, std::min(newWidth, static_cast<int>(width * Config::MAX_SCREEN_RATIO)));
         newHeight = std::max(10, std::min(newHeight, static_cast<int>(height * Config::MAX_SCREEN_RATIO)));
 
-        selectedScreen->setWidth(newWidth);
-        selectedScreen->setHeight(newHeight);
+        selectedScreen->startScale(newWidth, newHeight);
     }
 }
 
-void ScreenManager::handleRotation(float direction) {
-    if (selectedScreen) {
-        selectedScreen->rotate(direction);
+void ScreenManager::update(float dt, int rotateInput) {
+    for (auto& screen : screens) {
+        const float target = (&screen == selectedScreen) ? rotateInput * Config::ROTATION_SPEED : 0.0f;
+        screen.update(dt, target);
     }
 }
 
@@ -119,8 +119,8 @@ void ScreenManager::resize(int newWidth, int newHeight) {
     for (auto& screen : screens) {
         screen.setX(screen.getX() * scaleX);
         screen.setY(screen.getY() * scaleY);
-        screen.setWidth(std::max(1, static_cast<int>(std::lround(screen.getWidth() * scaleX))));
-        screen.setHeight(std::max(1, static_cast<int>(std::lround(screen.getHeight() * scaleY))));
+        screen.setWidth(std::max(1, static_cast<int>(std::lround(screen.getTargetWidth() * scaleX))));
+        screen.setHeight(std::max(1, static_cast<int>(std::lround(screen.getTargetHeight() * scaleY))));
     }
 
     width = newWidth;

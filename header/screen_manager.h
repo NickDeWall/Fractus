@@ -12,7 +12,7 @@ public:
     Screen* handleSelection(SDL_FPoint mousePos);
     void handleDragging(SDL_FPoint mousePos);
     void handleScaling(int scrollY);
-    void handleRotation(float direction);
+    void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);
 
     Screen* getSelectedScreen() const { return selectedScreen; }

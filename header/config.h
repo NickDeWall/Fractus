@@ -14,9 +14,13 @@ namespace Config {
 
     constexpr float SCALE_FACTOR_UP = 1.08f;
     constexpr float SCALE_FACTOR_DOWN = 0.92f;
+    constexpr float SCALE_DURATION = 0.12f;
+    constexpr float SCALE_EASE_STRENGTH = 3.0f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
-    constexpr float ROTATION_SPEED = 90.0f;
+    constexpr float ROTATION_SPEED = 140.0f;
+    constexpr float ROTATION_RAMP_TIME = 0.3f;
+    constexpr float ROTATION_DECEL_TIME = 0.1f;
     constexpr float COLOR_ROTATION_SPEED = 0.2f;
     constexpr float SATURATION_CYCLE_SPEED = 1.4f;
     constexpr float ALPHA_CHANGE_SPEED = 20.0f;

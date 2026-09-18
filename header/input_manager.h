@@ -28,6 +28,7 @@ private:
     SDL_Rect windowedRect = { 0, 0, 0, 0 };
     int frameCounter;
     GLuint currentFrame;
+    int rotateInput = 0;
     
     // Scaling mode variables
     bool scalingMode;

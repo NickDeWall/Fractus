@@ -135,6 +135,19 @@ namespace MathUtils {
         return linearInterpolate(y0, y1, t);
     }
 
+    double easeOutPowerInterpolate(double y0, double y1, double t, double strength) {
+        t = std::clamp(t, 0.0, 1.0);
+        t = 1.0 - std::pow(1.0 - t, std::max(strength, 1.0));
+        return linearInterpolate(y0, y1, t);
+    }
+
+    double easeOutExpoInterpolate(double y0, double y1, double t, double strength) {
+        t = std::clamp(t, 0.0, 1.0);
+        if (strength <= 1e-6) return linearInterpolate(y0, y1, t);
+        t = (1.0 - std::exp(-strength * t)) / (1.0 - std::exp(-strength));
+        return linearInterpolate(y0, y1, t);
+    }
+
     double lagrangeInterpolate(const std::vector<double>& x, const std::vector<double>& y, double xi) {
         if (x.size() != y.size()) {
             throw std::invalid_argument("x and y vectors must have same size");

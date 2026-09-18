@@ -7,7 +7,8 @@
 #include <math.h>
 
 Screen::Screen(float x, float y, int width, int height, float rotation, SDL_Color color)
-    : xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation), color(color) {
+    : xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation), color(color),
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f) {
     trueR = static_cast<float>(color.r);
     trueG = static_cast<float>(color.g);
     trueB = static_cast<float>(color.b);
@@ -24,11 +25,11 @@ void Screen::setY(float y) {
 }
 
 void Screen::setWidth(int width) {
-    origWidth = width;
+    origWidth = fromWidth = targetWidth = width;
 }
 
 void Screen::setHeight(int height) {
-    origHeight = height;
+    origHeight = fromHeight = targetHeight = height;
 }
 
 void Screen::setRotation(float rot) {
@@ -130,6 +131,14 @@ SDL_Color Screen::getScaleOutlineColor() const {
              static_cast<Uint8>(std::min(255, static_cast<int>(Config::OUTLINE_ALPHA + Config::OUTLINE_SCALE_INCREASE))) };
 }
 
+int Screen::getTargetWidth() const {
+    return targetWidth;
+}
+
+int Screen::getTargetHeight() const {
+    return targetHeight;
+}
+
 void Screen::rotate(float degrees) {
     rotation = fmod(rotation + degrees, 360.0f);
 }
@@ -146,4 +155,24 @@ SDL_FPoint Screen::getRotatedSize() const {
     float newH = w * sin_a + h * cos_a;
     
     return { newW, newH };
+}
+
+void Screen::startScale(int width, int height) {
+    fromWidth = origWidth;
+    fromHeight = origHeight;
+    targetWidth = width;
+    targetHeight = height;
+    scaleProgress = 0.0f;
+}
+
+void Screen::update(float dt, float targetVelocity) {
+    const bool braking = targetVelocity == 0.0f || targetVelocity * angularVelocity < 0.0f;
+    const float step = Config::ROTATION_SPEED / (braking ? Config::ROTATION_DECEL_TIME : Config::ROTATION_RAMP_TIME) * dt;
+    angularVelocity += std::clamp(targetVelocity - angularVelocity, -step, step);
+    if (angularVelocity != 0.0f) rotate(angularVelocity * dt);
+
+    if (scaleProgress >= 1.0f) return;
+    scaleProgress = std::min(1.0f, scaleProgress + dt / Config::SCALE_DURATION);
+    origWidth = static_cast<int>(std::lround(MathUtils::easeOutPowerInterpolate(fromWidth, targetWidth, scaleProgress, Config::SCALE_EASE_STRENGTH)));
+    origHeight = static_cast<int>(std::lround(MathUtils::easeOutPowerInterpolate(fromHeight, targetHeight, scaleProgress, Config::SCALE_EASE_STRENGTH)));
 }

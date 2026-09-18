@@ -17,6 +17,8 @@ namespace MathUtils {
     double cosineInterpolate(double y0, double y1, double t);
     double smoothstepInterpolate(double y0, double y1, double t);
     double smootherstepInterpolate(double y0, double y1, double t);
+    double easeOutPowerInterpolate(double y0, double y1, double t, double strength);
+    double easeOutExpoInterpolate(double y0, double y1, double t, double strength);
     double lagrangeInterpolate(const std::vector<double>& x, const std::vector<double>& y, double xi);
     std::vector<std::vector<double>> dividedDifferences(const std::vector<double>& x, const std::vector<double>& y);
     double newtonInterpolate(const std::vector<double>& x, const std::vector<double>& y, double xi);

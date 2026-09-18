@@ -37,10 +37,14 @@ public:
     float getTrueV() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
+    int getTargetWidth() const;
+    int getTargetHeight() const;
 
     // Actions
     void rotate(float degrees);
     SDL_FPoint getRotatedSize() const;
+    void startScale(int width, int height);
+    void update(float dt, float targetVelocity);
 
 private:
     float xCoord;
@@ -59,4 +63,11 @@ private:
     float trueV;
     
     SDL_Color color;
+
+    int fromWidth;
+    int fromHeight;
+    int targetWidth;
+    int targetHeight;
+    float scaleProgress;
+    float angularVelocity;
 };

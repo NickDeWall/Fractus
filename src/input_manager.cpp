@@ -377,11 +377,12 @@ bool InputManager::handleEvents() {
     if (keyState[SDL_SCANCODE_ESCAPE]) {
         return false;
     }
+    rotateInput = 0;
     if (keyState[SDL_SCANCODE_D]) {
-        handleKeyPress("rotate_clockwise");
+        rotateInput = 1;
     }
     else if (keyState[SDL_SCANCODE_A]) {
-        handleKeyPress("rotate_counterclockwise");
+        rotateInput = -1;
     }
     else if (keyState[SDL_SCANCODE_W]) {
         handleKeyPress("strengthen");
@@ -457,13 +458,7 @@ void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
 void InputManager::handleKeyPress(const std::string& event) {
     Screen* selected = screenManager->getSelectedScreen();
     if (!selected) return;
-    if (event == "rotate_clockwise") {
-        screenManager->handleRotation(Config::ROTATION_SPEED * deltaTime);
-    }
-    else if (event == "rotate_counterclockwise") {
-        screenManager->handleRotation(-Config::ROTATION_SPEED * deltaTime);
-    }
-    else if (event == "cycle_hue_up") {
+    if (event == "cycle_hue_up") {
         handleColorRotation(1);
     }
     else if (event == "cycle_hue_down") {
@@ -545,6 +540,7 @@ void InputManager::update() {
         SDL_GetMouseState(&x, &y);
         SDL_FPoint mousePos = { static_cast<float>(x), static_cast<float>(y) };
         screenManager->handleDragging(mousePos);
+        screenManager->update(deltaTime, rotateInput);
         currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter);
     }
 }
