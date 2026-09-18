@@ -38,12 +38,15 @@ public:
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     int getTargetWidth() const;
+    float getTargetX() const;
+    float getTargetY() const;
     int getTargetHeight() const;
 
     // Actions
     void rotate(float degrees);
     SDL_FPoint getRotatedSize() const;
     void startScale(int width, int height);
+    void moveTo(float x, float y);
     void update(float dt, float targetVelocity);
 
 private:
@@ -70,4 +73,6 @@ private:
     int targetHeight;
     float scaleProgress;
     float angularVelocity;
+    float targetX;
+    float targetY;
 };

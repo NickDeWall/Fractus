@@ -78,8 +78,7 @@ void ScreenManager::handleDragging(SDL_FPoint mousePos) {
         float newX = mousePos.x - dragOffset.x;
         float newY = mousePos.y - dragOffset.y;
 
-        selectedScreen->setX(newX);
-        selectedScreen->setY(newY);
+        selectedScreen->moveTo(newX, newY);
     }
 }
 
@@ -117,8 +116,8 @@ void ScreenManager::resize(int newWidth, int newHeight) {
     const float scaleY = static_cast<float>(newHeight) / static_cast<float>(height);
 
     for (auto& screen : screens) {
-        screen.setX(screen.getX() * scaleX);
-        screen.setY(screen.getY() * scaleY);
+        screen.setX(screen.getTargetX() * scaleX);
+        screen.setY(screen.getTargetY() * scaleY);
         screen.setWidth(std::max(1, static_cast<int>(std::lround(screen.getTargetWidth() * scaleX))));
         screen.setHeight(std::max(1, static_cast<int>(std::lround(screen.getTargetHeight() * scaleY))));
     }
