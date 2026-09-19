@@ -8,7 +8,8 @@
 
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
-      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal) {
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal),
+      logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -60,6 +61,10 @@ void Screen::setDelay(float seconds) {
 
 void Screen::setDisplayMode(DisplayMode mode) {
     displayMode = mode;
+}
+
+void Screen::setLogPolarMinRadius(float radius) {
+    logPolarMinRadius = std::clamp(radius, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH);
 }
 
 int Screen::getId() const {
@@ -120,6 +125,10 @@ float Screen::getDelay() const {
 
 DisplayMode Screen::getDisplayMode() const {
     return displayMode;
+}
+
+float Screen::getLogPolarMinRadius() const {
+    return logPolarMinRadius;
 }
 
 SDL_Color Screen::getOutlineColor() const {

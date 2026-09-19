@@ -38,4 +38,5 @@ private:
     void drawRateSlider(const std::vector<Screen*>& selected);
     void drawDelaySlider(const std::vector<Screen*>& selected);
     void drawDisplayModeCombo(const std::vector<Screen*>& selected);
+    void drawLogPolarSlider(const std::vector<Screen*>& selected);
 };

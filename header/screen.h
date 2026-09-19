@@ -26,6 +26,7 @@ public:
     void setUpdateRate(float rate);
     void setDelay(float seconds);
     void setDisplayMode(DisplayMode mode);
+    void setLogPolarMinRadius(float radius);
 
     // Getters
     int getId() const;
@@ -42,6 +43,7 @@ public:
     float getUpdateRate() const;
     float getDelay() const;
     DisplayMode getDisplayMode() const;
+    float getLogPolarMinRadius() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -80,4 +82,5 @@ private:
     float updateRate;
     float delay;
     DisplayMode displayMode;
+    float logPolarMinRadius;
 };

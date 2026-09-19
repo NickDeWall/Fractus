@@ -323,7 +323,7 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         if (screen.getDisplayMode() != DisplayMode::Prop) {
             glUniform1i(glGetUniformLocation(screenShaderProgram, "mode"), static_cast<int>(screen.getDisplayMode()));
             glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
-            glUniform1f(glGetUniformLocation(screenShaderProgram, "minRadius"), Config::LOG_POLAR_MIN_RADIUS);
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "minRadius"), screen.getLogPolarMinRadius());
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

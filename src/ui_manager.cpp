@@ -131,6 +131,9 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         ImGui::Separator();
 
         drawDisplayModeCombo(selected);
+        if (selected.front()->getDisplayMode() == DisplayMode::LogPolar) {
+            drawLogPolarSlider(selected);
+        }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
         ImGui::Spacing();
@@ -263,4 +266,18 @@ void UiManager::drawDisplayModeCombo(const std::vector<Screen*>& selected) {
         }
     }
     ImGui::EndCombo();
+}
+
+void UiManager::drawLogPolarSlider(const std::vector<Screen*>& selected) {
+    float radius = selected.front()->getLogPolarMinRadius();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (!ImGui::SliderFloat("##logPolarMinRadius", &radius, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH,
+            "Min radius %.4f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+        return;
+    }
+
+    for (Screen* screen : selected) {
+        screen->setLogPolarMinRadius(radius);
+    }
 }
