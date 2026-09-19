@@ -101,12 +101,19 @@ float Screen::getAlpha() const {
 }
 
 SDL_Color Screen::getOutlineColor() const {
-    const SDL_Color color = getColor();
-    return { color.r, color.g, color.b, Config::OUTLINE_ALPHA };
+    float r, g, b;
+    MathUtils::hsvToRgb(hue, saturation, std::max(value, Config::OUTLINE_MIN_VALUE), r, g, b);
+    return {
+        static_cast<Uint8>(std::lround(r)),
+        static_cast<Uint8>(std::lround(g)),
+        static_cast<Uint8>(std::lround(b)),
+        Config::OUTLINE_ALPHA
+    };
 }
 
+
 SDL_Color Screen::getScaleOutlineColor() const {
-    const SDL_Color color = getColor();
+    const SDL_Color color = getOutlineColor();
     return { color.r, color.g, color.b,
              static_cast<Uint8>(std::min(255, static_cast<int>(Config::OUTLINE_ALPHA + Config::OUTLINE_SCALE_INCREASE))) };
 }

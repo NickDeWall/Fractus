@@ -66,16 +66,33 @@ void UiManager::drawScreenMenu(const std::vector<Screen*>& selected) {
 
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - padding, viewport->WorkPos.y + viewport->WorkSize.y - padding),
         ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-    ImGui::SetNextWindowSize(ImVec2(220.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImVec2(300.0f, 0.0f));
 
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
 
     if (ImGui::Begin("Screen", &screenMenuOpen, flags)) {
+        Screen* primary = selected.front();
+
         if (selected.size() == 1) {
-            ImGui::Text("Screen #%d", selected[0]->getId());
+            ImGui::Text("Screen #%d", primary->getId());
         } else {
             ImGui::Text("%d screens selected", static_cast<int>(selected.size()));
+        }
+        ImGui::Separator();
+
+        float hsva[4] = { primary->getHue(), primary->getSaturation(), primary->getValue(), primary->getAlpha() };
+        const ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_InputHSV | ImGuiColorEditFlags_AlphaBar |
+            ImGuiColorEditFlags_AlphaPreviewHalf;
+
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        if (ImGui::ColorPicker4("##color", hsva, colorFlags)) {
+            for (Screen* screen : selected) {
+                screen->setHue(hsva[0]);
+                screen->setSaturation(hsva[1]);
+                screen->setValue(hsva[2]);
+                screen->setAlpha(hsva[3]);
+            }
         }
     }
     ImGui::End();
