@@ -25,6 +25,7 @@ namespace Config {
     constexpr float CAPTURE_RATE_NO_DELAY = 140.0f;
     constexpr float CAPTURE_RATE_MAX_DELAY = 40.0f;
     constexpr int HISTORY_SIZE_STEPS = 16;
+    constexpr float LOG_POLAR_MIN_RADIUS = 0.01f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

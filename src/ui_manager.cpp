@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 

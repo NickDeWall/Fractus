@@ -60,6 +60,7 @@ private:
     static void computeRenderSize(int w, int h, int& outW, int& outH);
     GLuint textureShaderProgram;
     GLuint colorShaderProgram;
+    GLuint screenShaderProgram;
     glm::mat4 projection;
 
     // Simplified texture management - ping-pong between two textures

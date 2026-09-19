@@ -1,5 +1,6 @@
 #include "fractal_manager.h"
 #include "math_utils.h"
+#include "shader_manager.h"
 #include <algorithm>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -8,6 +9,45 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+
+namespace {
+    const char* SCREEN_VERTEX_SHADER = R"(
+        #version 330 core
+        layout(location = 0) in vec2 pos;
+        layout(location = 1) in vec2 texCoord;
+        uniform mat4 projection;
+        uniform mat4 model;
+        out vec2 vTexCoord;
+        void main() {
+            gl_Position = projection * model * vec4(pos, 0.0, 1.0);
+            vTexCoord = texCoord;
+        }
+    )";
+
+    const char* SCREEN_FRAGMENT_SHADER = R"(
+        #version 330 core
+        const int LOG_POLAR = 2;
+        const float TAU = 6.28318530718;
+        in vec2 vTexCoord;
+        uniform sampler2D tex;
+        uniform vec4 color;
+        uniform int mode;
+        uniform float aspect;
+        uniform float minRadius;
+        out vec4 fragColor;
+        void main() {
+            vec2 uv = vTexCoord;
+            if (mode == LOG_POLAR) {
+                float maxRadius = 0.5 * min(aspect, 1.0);
+                float lowRadius = maxRadius * minRadius;
+                float radius = lowRadius * exp(vTexCoord.x * log(maxRadius / lowRadius));
+                float angle = vTexCoord.y * TAU;
+                uv = vec2(0.5 + radius * cos(angle) / aspect, 0.5 + radius * sin(angle));
+            }
+            fragColor = texture(tex, uv) * color;
+        }
+    )";
+}
 
 void FractalManager::computeRenderSize(int w, int h, int& outW, int& outH) {
     const float scale = (Config::RENDER_SCALE > 0.0f) ? Config::RENDER_SCALE : 1.0f;
@@ -29,6 +69,7 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
     previousTexture = createTexture(renderWidth, renderHeight);
     
     this->projection = projection;
+    screenShaderProgram = ShaderManager::createShaderProgram(SCREEN_VERTEX_SHADER, SCREEN_FRAGMENT_SHADER);
 
     glGenFramebuffers(1, &fbo);
     glGenFramebuffers(1, &snapshotFbo);
@@ -60,6 +101,7 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
 
 FractalManager::~FractalManager() {
     clearSnapshots();
+    glDeleteProgram(screenShaderProgram);
     glDeleteFramebuffers(1, &snapshotFbo);
     glDeleteTextures(1, &currentTexture);
     glDeleteTextures(1, &previousTexture);
@@ -265,7 +307,7 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
     glm::mat4 offscreenProjection = glm::ortho(0.0f, (float)width, (float)height, 0.0f, -1.0f, 1.0f);
     
     for (const auto& screen : screens) {
-        glUseProgram(textureShaderProgram);
+        glUseProgram(screenShaderProgram);
         
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(screen.getX(), height - screen.getY(), 0.0f));
@@ -273,12 +315,16 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         model = glm::translate(model, glm::vec3(screen.getWidth()/2.0f, -screen.getHeight()/2.0f, 0.0f));
         model = glm::scale(model, glm::vec3(-(float)screen.getWidth(), (float)screen.getHeight(), 1.0f));
         
-        GLint projLoc = glGetUniformLocation(textureShaderProgram, "projection");
-        GLint modelLoc = glGetUniformLocation(textureShaderProgram, "model");
-        GLint texLoc = glGetUniformLocation(textureShaderProgram, "tex");
-        GLint colorLoc = glGetUniformLocation(textureShaderProgram, "color");
+        GLint projLoc = glGetUniformLocation(screenShaderProgram, "projection");
+        GLint modelLoc = glGetUniformLocation(screenShaderProgram, "model");
+        GLint texLoc = glGetUniformLocation(screenShaderProgram, "tex");
+        GLint colorLoc = glGetUniformLocation(screenShaderProgram, "color");
         
         if (screen.getDisplayMode() != DisplayMode::Prop) {
+            glUniform1i(glGetUniformLocation(screenShaderProgram, "mode"), static_cast<int>(screen.getDisplayMode()));
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "minRadius"), Config::LOG_POLAR_MIN_RADIUS);
+
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
             if (colorLoc != -1) glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);

@@ -3,8 +3,9 @@
 #include "config.h"
 
 enum class DisplayMode {
-    Normal,
-    Prop,
+    Normal = 0,
+    Prop = 1,
+    LogPolar = 2,
     Count
 };
 
