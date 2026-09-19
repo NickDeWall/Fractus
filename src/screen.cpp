@@ -31,6 +31,7 @@ void Screen::setHeight(float height) {
 
 void Screen::setRotation(float rot) {
     rotation = rot;
+    angularVelocity = 0.0f;
 }
 
 void Screen::setHue(float h) {

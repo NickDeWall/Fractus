@@ -28,6 +28,11 @@ private:
     float sizeBasePercent = 0.0f;
     std::unordered_map<int, SDL_FPoint> sizeBaseline;
 
+    bool rotationEditing = false;
+    float rotationBaseAngle = 0.0f;
+    std::unordered_map<int, float> rotationBaseline;
+
     void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);
+    void drawRotationControl(const std::vector<Screen*>& selected);
 };

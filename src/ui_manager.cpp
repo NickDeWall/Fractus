@@ -2,9 +2,50 @@
 #include "screen.h"
 #include "screen_manager.h"
 #include "config.h"
+#include <cmath>
+
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
+
+namespace {
+    float wrapDegrees(float degrees) {
+        return degrees - 360.0f * std::floor(degrees / 360.0f);
+    }
+
+    bool rotationDial(const char* id, float& degrees, float radius) {
+        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton(id, ImVec2(radius * 2.0f, radius * 2.0f));
+        const bool active = ImGui::IsItemActive();
+        const bool hovered = ImGui::IsItemHovered();
+        const ImVec2 center(origin.x + radius, origin.y + radius);
+
+        bool changed = false;
+        if (active) {
+            const ImVec2 mouse = ImGui::GetIO().MousePos;
+            const float dx = mouse.x - center.x;
+            const float dy = mouse.y - center.y;
+            if (dx * dx + dy * dy > 4.0f) {
+                const float angle = wrapDegrees(std::atan2(dx, -dy) * 180.0f / static_cast<float>(Config::PI));
+                if (angle != degrees) {
+                    degrees = angle;
+                    changed = true;
+                }
+            }
+        }
+
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        const ImU32 background = ImGui::GetColorU32(active ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+        const ImU32 handle = ImGui::GetColorU32(active ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab);
+        const float radians = degrees * static_cast<float>(Config::PI) / 180.0f;
+        const ImVec2 tip(center.x + std::sin(radians) * (radius - 5.0f), center.y - std::cos(radians) * (radius - 5.0f));
+
+        draw->AddCircleFilled(center, radius, background);
+        draw->AddLine(center, tip, handle, 2.0f);
+        draw->AddCircleFilled(tip, 4.0f, handle);
+        return changed;
+    }
+}
 
 UiManager::UiManager(SDL_Window* window, SDL_GLContext context) {
     IMGUI_CHECKVERSION();
@@ -85,6 +126,9 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         ImGui::Separator();
 
         drawSizeSlider(screenManager, selected);
+        ImGui::Spacing();
+        drawRotationControl(selected);
+        ImGui::Spacing();
 
         float hsva[4] = { primary->getHue(), primary->getSaturation(), primary->getValue(), primary->getAlpha() };
         const ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_InputHSV | ImGuiColorEditFlags_AlphaBar |
@@ -129,5 +173,38 @@ void UiManager::drawSizeSlider(ScreenManager& screenManager, const std::vector<S
         const SDL_FPoint size = screenManager.clampSize(base->second.x * ratio, base->second.y * ratio);
         screen->setWidth(size.x);
         screen->setHeight(size.y);
+    }
+}
+
+void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {
+    float angle = wrapDegrees(selected.front()->getRotation());
+
+    if (!rotationEditing) {
+        rotationBaseAngle = angle;
+        rotationBaseline.clear();
+        for (Screen* screen : selected) {
+            rotationBaseline[screen->getId()] = screen->getRotation();
+        }
+    }
+
+    bool changed = rotationDial("##rotationDial", angle, 28.0f);
+    bool active = ImGui::IsItemActive();
+
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::TextUnformatted("Rotation");
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    changed |= ImGui::DragFloat("##rotation", &angle, 0.25f, 0.0f, 0.0f, "%.2f\xC2\xB0");
+    active |= ImGui::IsItemActive();
+    ImGui::EndGroup();
+
+    rotationEditing = active;
+    if (!changed) return;
+
+    const float delta = angle - rotationBaseAngle;
+    for (Screen* screen : selected) {
+        const auto base = rotationBaseline.find(screen->getId());
+        if (base == rotationBaseline.end()) continue;
+        screen->setRotation(wrapDegrees(base->second + delta));
     }
 }
