@@ -1,8 +1,10 @@
 #pragma once
 #include <SDL2/SDL.h>
 #include <vector>
+#include <unordered_map>
 
 class Screen;
+class ScreenManager;
 
 class UiManager {
 public:
@@ -17,10 +19,15 @@ public:
     void closeScreenMenu();
     bool isScreenMenuOpen() const;
 
-    void render(const std::vector<Screen*>& selected);
+    void render(ScreenManager& screenManager);
 
 private:
     bool screenMenuOpen = false;
 
-    void drawScreenMenu(const std::vector<Screen*>& selected);
+    bool sizeEditing = false;
+    float sizeBasePercent = 0.0f;
+    std::unordered_map<int, SDL_Point> sizeBaseline;
+
+    void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
+    void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);
 };

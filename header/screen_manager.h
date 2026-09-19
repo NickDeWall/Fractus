@@ -18,6 +18,9 @@ public:
     void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);
 
+    SDL_Point clampSize(int screenWidth, int screenHeight) const;
+    int getWidth() const { return width; }
+    int getHeight() const { return height; }
     bool isSelected(const Screen& screen) const;
     std::vector<Screen*> getSelectedScreens();
     const std::vector<Screen>& getScreens() const { return screens; }

@@ -109,18 +109,21 @@ void ScreenManager::handleScaling(int scrollY) {
     if (!scrollY) return;
 
     const float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
-    const int maxWidth = static_cast<int>(width * Config::MAX_SCREEN_RATIO);
-    const int maxHeight = static_cast<int>(height * Config::MAX_SCREEN_RATIO);
 
     for (Screen* screen : getSelectedScreens()) {
-        int newWidth = static_cast<int>(screen->getTargetWidth() * scaleFactor);
-        int newHeight = static_cast<int>(screen->getTargetHeight() * scaleFactor);
-
-        newWidth = std::max(10, std::min(newWidth, maxWidth));
-        newHeight = std::max(10, std::min(newHeight, maxHeight));
-
-        screen->startScale(newWidth, newHeight);
+        const SDL_Point size = clampSize(static_cast<int>(screen->getTargetWidth() * scaleFactor),
+            static_cast<int>(screen->getTargetHeight() * scaleFactor));
+        screen->startScale(size.x, size.y);
     }
+}
+
+SDL_Point ScreenManager::clampSize(int screenWidth, int screenHeight) const {
+    const int maxWidth = static_cast<int>(width * Config::MAX_SCREEN_RATIO);
+    const int maxHeight = static_cast<int>(height * Config::MAX_SCREEN_RATIO);
+    return {
+        std::max(10, std::min(screenWidth, maxWidth)),
+        std::max(10, std::min(screenHeight, maxHeight))
+    };
 }
 
 void ScreenManager::update(float dt, int rotateInput) {

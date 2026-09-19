@@ -1,5 +1,8 @@
 #include "ui_manager.h"
 #include "screen.h"
+#include "screen_manager.h"
+#include "config.h"
+#include <cmath>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
@@ -43,7 +46,8 @@ bool UiManager::isScreenMenuOpen() const {
     return screenMenuOpen;
 }
 
-void UiManager::render(const std::vector<Screen*>& selected) {
+void UiManager::render(ScreenManager& screenManager) {
+    const std::vector<Screen*> selected = screenManager.getSelectedScreens();
     if (selected.empty()) {
         screenMenuOpen = false;
     }
@@ -53,14 +57,14 @@ void UiManager::render(const std::vector<Screen*>& selected) {
     ImGui::NewFrame();
 
     if (screenMenuOpen) {
-        drawScreenMenu(selected);
+        drawScreenMenu(screenManager, selected);
     }
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UiManager::drawScreenMenu(const std::vector<Screen*>& selected) {
+void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float padding = 10.0f;
 
@@ -81,6 +85,8 @@ void UiManager::drawScreenMenu(const std::vector<Screen*>& selected) {
         }
         ImGui::Separator();
 
+        drawSizeSlider(screenManager, selected);
+
         float hsva[4] = { primary->getHue(), primary->getSaturation(), primary->getValue(), primary->getAlpha() };
         const ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_InputHSV | ImGuiColorEditFlags_AlphaBar |
             ImGuiColorEditFlags_AlphaPreviewHalf;
@@ -96,4 +102,35 @@ void UiManager::drawScreenMenu(const std::vector<Screen*>& selected) {
         }
     }
     ImGui::End();
+}
+
+void UiManager::drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected) {
+    float percent = selected.front()->getTargetWidth() * 100.0f / screenManager.getWidth();
+
+    if (!sizeEditing) {
+        sizeBasePercent = percent;
+        sizeBaseline.clear();
+        for (Screen* screen : selected) {
+            sizeBaseline[screen->getId()] = { screen->getTargetWidth(), screen->getTargetHeight() };
+        }
+    }
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    const bool changed = ImGui::SliderFloat("##size", &percent, 1.0f, Config::MAX_SCREEN_RATIO * 100.0f,
+        "Size %.1f%%", ImGuiSliderFlags_AlwaysClamp);
+    sizeEditing = ImGui::IsItemActive();
+
+    if (!changed || sizeBasePercent <= 0.0f) return;
+
+    const float ratio = percent / sizeBasePercent;
+    for (Screen* screen : selected) {
+        const auto base = sizeBaseline.find(screen->getId());
+        if (base == sizeBaseline.end()) continue;
+
+        const SDL_Point size = screenManager.clampSize(
+            static_cast<int>(std::lround(base->second.x * ratio)),
+            static_cast<int>(std::lround(base->second.y * ratio)));
+        screen->setWidth(size.x);
+        screen->setHeight(size.y);
+    }
 }

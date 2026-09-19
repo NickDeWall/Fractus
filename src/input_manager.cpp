@@ -538,7 +538,7 @@ void InputManager::draw() {
         OtherRenders::renderDebugText(width, height, debugTexture, debugWidth, debugHeight, textureShaderProgram, projection, vao);
     }
 
-    ui->render(screenManager->getSelectedScreens());
+    ui->render(*screenManager);
 
     SDL_GL_SwapWindow(window);
 }
