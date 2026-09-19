@@ -3,12 +3,17 @@
 #include "screen_manager.h"
 #include "config.h"
 #include <cmath>
+#include <string>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 
 namespace {
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop" };
+    static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
+        "Every display mode needs a name");
+
     float wrapDegrees(float degrees) {
         return degrees - 360.0f * std::floor(degrees / 360.0f);
     }
@@ -125,6 +130,8 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         }
         ImGui::Separator();
 
+        drawDisplayModeCombo(selected);
+        ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
         ImGui::Spacing();
         drawRotationControl(selected);
@@ -238,4 +245,22 @@ void UiManager::drawDelaySlider(const std::vector<Screen*>& selected) {
     for (Screen* screen : selected) {
         screen->setDelay(delayMs / 1000.0f);
     }
+}
+
+void UiManager::drawDisplayModeCombo(const std::vector<Screen*>& selected) {
+    const DisplayMode current = selected.front()->getDisplayMode();
+    const std::string preview = std::string("Display: ") + DISPLAY_MODE_NAMES[static_cast<int>(current)];
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (!ImGui::BeginCombo("##displayMode", preview.c_str())) return;
+
+    for (int i = 0; i < static_cast<int>(DisplayMode::Count); ++i) {
+        const DisplayMode mode = static_cast<DisplayMode>(i);
+        if (ImGui::Selectable(DISPLAY_MODE_NAMES[i], mode == current)) {
+            for (Screen* screen : selected) {
+                screen->setDisplayMode(mode);
+            }
+        }
+    }
+    ImGui::EndCombo();
 }

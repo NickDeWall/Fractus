@@ -185,6 +185,8 @@ void FractalManager::updateSnapshots(const std::vector<Screen>& screens, double 
     }
 
     for (const auto& screen : screens) {
+        if (screen.getDisplayMode() == DisplayMode::Prop) continue;
+
         if (screen.getDelay() > 0.0f) {
             updateDelayed(screen, time);
             continue;
@@ -276,17 +278,19 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         GLint texLoc = glGetUniformLocation(textureShaderProgram, "tex");
         GLint colorLoc = glGetUniformLocation(textureShaderProgram, "color");
         
-        if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
-        if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
-        if (colorLoc != -1) glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, screenTexture(screen));
-        if (texLoc != -1) glUniform1i(texLoc, 0);
-        
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        glBindVertexArray(0);
+        if (screen.getDisplayMode() != DisplayMode::Prop) {
+            if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
+            if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+            if (colorLoc != -1) glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, screenTexture(screen));
+            if (texLoc != -1) glUniform1i(texLoc, 0);
+
+            glBindVertexArray(vao);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            glBindVertexArray(0);
+        }
         glUseProgram(0);
         
         float r, g, b, alpha;

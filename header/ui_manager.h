@@ -37,4 +37,5 @@ private:
     void drawRotationControl(const std::vector<Screen*>& selected);
     void drawRateSlider(const std::vector<Screen*>& selected);
     void drawDelaySlider(const std::vector<Screen*>& selected);
+    void drawDisplayModeCombo(const std::vector<Screen*>& selected);
 };

@@ -8,7 +8,7 @@
 
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
-      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f) {
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -56,6 +56,10 @@ void Screen::setUpdateRate(float rate) {
 
 void Screen::setDelay(float seconds) {
     delay = std::clamp(seconds, 0.0f, Config::MAX_DELAY);
+}
+
+void Screen::setDisplayMode(DisplayMode mode) {
+    displayMode = mode;
 }
 
 int Screen::getId() const {
@@ -112,6 +116,10 @@ float Screen::getUpdateRate() const {
 
 float Screen::getDelay() const {
     return delay;
+}
+
+DisplayMode Screen::getDisplayMode() const {
+    return displayMode;
 }
 
 SDL_Color Screen::getOutlineColor() const {

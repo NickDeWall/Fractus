@@ -2,6 +2,12 @@
 #include <SDL2/SDL.h>
 #include "config.h"
 
+enum class DisplayMode {
+    Normal,
+    Prop,
+    Count
+};
+
 class Screen {
 public:
     Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color);
@@ -18,6 +24,7 @@ public:
     void setAlpha(float a);
     void setUpdateRate(float rate);
     void setDelay(float seconds);
+    void setDisplayMode(DisplayMode mode);
 
     // Getters
     int getId() const;
@@ -33,6 +40,7 @@ public:
     float getAlpha() const;
     float getUpdateRate() const;
     float getDelay() const;
+    DisplayMode getDisplayMode() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -70,4 +78,5 @@ private:
     float targetY;
     float updateRate;
     float delay;
+    DisplayMode displayMode;
 };
