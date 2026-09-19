@@ -67,7 +67,7 @@ GLuint FractalManager::createTexture(int w, int h) {
     GLuint texture;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -116,8 +116,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         glBindVertexArray(0);
         glUseProgram(0);
         
-        SDL_Color color = screen.getColor();
-        float alpha = color.a / 255.0f;
+        float r, g, b, alpha;
+        screen.getColorF(r, g, b, alpha);
         
         glUseProgram(colorShaderProgram);
         
@@ -127,7 +127,7 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         
         if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
         if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
-        if (colorLoc != -1) glUniform4f(colorLoc, color.r / 255.0f * alpha, color.g / 255.0f * alpha, color.b / 255.0f * alpha, alpha);
+        if (colorLoc != -1) glUniform4f(colorLoc, r * alpha, g * alpha, b * alpha, alpha);
         
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);

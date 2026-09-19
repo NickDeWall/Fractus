@@ -73,15 +73,12 @@ float Screen::getRotation() const {
     return rotation;
 }
 
-SDL_Color Screen::getColor() const {
-    float r, g, b;
+void Screen::getColorF(float& r, float& g, float& b, float& a) const {
     MathUtils::hsvToRgb(hue, saturation, value, r, g, b);
-    return {
-        static_cast<Uint8>(std::lround(r)),
-        static_cast<Uint8>(std::lround(g)),
-        static_cast<Uint8>(std::lround(b)),
-        static_cast<Uint8>(std::lround(alpha * 255.0f))
-    };
+    r /= 255.0f;
+    g /= 255.0f;
+    b /= 255.0f;
+    a = alpha;
 }
 
 float Screen::getHue() const {

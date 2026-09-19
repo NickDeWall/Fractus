@@ -88,7 +88,7 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
 
         float hsva[4] = { primary->getHue(), primary->getSaturation(), primary->getValue(), primary->getAlpha() };
         const ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_InputHSV | ImGuiColorEditFlags_AlphaBar |
-            ImGuiColorEditFlags_AlphaPreviewHalf;
+            ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_Float;
 
         ImGui::SetNextItemWidth(-FLT_MIN);
         if (ImGui::ColorPicker4("##color", hsva, colorFlags)) {

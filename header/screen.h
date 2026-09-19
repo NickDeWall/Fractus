@@ -24,7 +24,7 @@ public:
     int getWidth() const;
     int getHeight() const;
     float getRotation() const;
-    SDL_Color getColor() const;
+    void getColorF(float& r, float& g, float& b, float& a) const;
     float getHue() const;
     float getSaturation() const;
     float getValue() const;
