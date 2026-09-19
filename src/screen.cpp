@@ -9,7 +9,8 @@
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
       fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal),
-      logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS) {
+      logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS),
+      juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -65,6 +66,11 @@ void Screen::setDisplayMode(DisplayMode mode) {
 
 void Screen::setLogPolarMinRadius(float radius) {
     logPolarMinRadius = std::clamp(radius, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH);
+}
+
+void Screen::setJuliaC(float real, float imag) {
+    juliaReal = std::clamp(real, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
+    juliaImag = std::clamp(imag, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
 }
 
 int Screen::getId() const {
@@ -129,6 +135,14 @@ DisplayMode Screen::getDisplayMode() const {
 
 float Screen::getLogPolarMinRadius() const {
     return logPolarMinRadius;
+}
+
+float Screen::getJuliaReal() const {
+    return juliaReal;
+}
+
+float Screen::getJuliaImag() const {
+    return juliaImag;
 }
 
 SDL_Color Screen::getOutlineColor() const {

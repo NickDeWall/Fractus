@@ -28,6 +28,10 @@ namespace Config {
     constexpr float LOG_POLAR_MIN_RADIUS = 0.01f;
     constexpr float LOG_POLAR_MIN_RADIUS_LOW = 0.0001f;
     constexpr float LOG_POLAR_MIN_RADIUS_HIGH = 0.9f;
+    constexpr float JULIA_VIEW_HEIGHT = 3.0f;
+    constexpr float JULIA_DEFAULT_REAL = -0.8f;
+    constexpr float JULIA_DEFAULT_IMAG = 0.156f;
+    constexpr float JULIA_C_LIMIT = 2.0f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

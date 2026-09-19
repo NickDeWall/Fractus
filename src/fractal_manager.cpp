@@ -27,6 +27,7 @@ namespace {
     const char* SCREEN_FRAGMENT_SHADER = R"(
         #version 330 core
         const int LOG_POLAR = 2;
+        const int JULIA = 3;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -34,6 +35,8 @@ namespace {
         uniform int mode;
         uniform float aspect;
         uniform float minRadius;
+        uniform vec2 juliaC;
+        uniform float juliaHeight;
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -43,6 +46,15 @@ namespace {
                 float radius = lowRadius * exp(vTexCoord.x * log(maxRadius / lowRadius));
                 float angle = vTexCoord.y * TAU;
                 uv = vec2(0.5 + radius * cos(angle) / aspect, 0.5 + radius * sin(angle));
+            } else if (mode == JULIA) {
+                vec2 span = vec2(aspect, 1.0) * juliaHeight;
+                vec2 z = (vTexCoord - 0.5) * span;
+                z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + juliaC;
+                uv = z / span + 0.5;
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
             }
             fragColor = texture(tex, uv) * color;
         }
@@ -324,6 +336,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1i(glGetUniformLocation(screenShaderProgram, "mode"), static_cast<int>(screen.getDisplayMode()));
             glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
             glUniform1f(glGetUniformLocation(screenShaderProgram, "minRadius"), screen.getLogPolarMinRadius());
+            glUniform2f(glGetUniformLocation(screenShaderProgram, "juliaC"), screen.getJuliaReal(), screen.getJuliaImag());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "juliaHeight"), Config::JULIA_VIEW_HEIGHT);
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

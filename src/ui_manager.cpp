@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 
@@ -133,6 +133,8 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         drawDisplayModeCombo(selected);
         if (selected.front()->getDisplayMode() == DisplayMode::LogPolar) {
             drawLogPolarSlider(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Julia) {
+            drawJuliaSliders(selected);
         }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
@@ -279,5 +281,21 @@ void UiManager::drawLogPolarSlider(const std::vector<Screen*>& selected) {
 
     for (Screen* screen : selected) {
         screen->setLogPolarMinRadius(radius);
+    }
+}
+
+void UiManager::drawJuliaSliders(const std::vector<Screen*>& selected) {
+    float real = selected.front()->getJuliaReal();
+    float imag = selected.front()->getJuliaImag();
+    const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    bool changed = ImGui::SliderFloat("##juliaReal", &real, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, "c real %.4f", flags);
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    changed |= ImGui::SliderFloat("##juliaImag", &imag, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, "c imag %.4f", flags);
+    if (!changed) return;
+
+    for (Screen* screen : selected) {
+        screen->setJuliaC(real, imag);
     }
 }

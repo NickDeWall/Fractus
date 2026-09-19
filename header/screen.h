@@ -6,6 +6,7 @@ enum class DisplayMode {
     Normal = 0,
     Prop = 1,
     LogPolar = 2,
+    Julia = 3,
     Count
 };
 
@@ -27,6 +28,7 @@ public:
     void setDelay(float seconds);
     void setDisplayMode(DisplayMode mode);
     void setLogPolarMinRadius(float radius);
+    void setJuliaC(float real, float imag);
 
     // Getters
     int getId() const;
@@ -44,6 +46,8 @@ public:
     float getDelay() const;
     DisplayMode getDisplayMode() const;
     float getLogPolarMinRadius() const;
+    float getJuliaReal() const;
+    float getJuliaImag() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -83,4 +87,6 @@ private:
     float delay;
     DisplayMode displayMode;
     float logPolarMinRadius;
+    float juliaReal;
+    float juliaImag;
 };
