@@ -4,7 +4,7 @@
 
 class Screen {
 public:
-    Screen(float x, float y, int width, int height, float rotation, SDL_Color color);
+    Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color);
 
     // Setters
     void setX(float x);
@@ -12,29 +12,23 @@ public:
     void setWidth(int width);
     void setHeight(int height);
     void setRotation(float rotation);
-    void setColor(SDL_Color color);
-    void setTrueR(float r);
-    void setTrueG(float g);
-    void setTrueB(float b);
-    void setTrueA(float a);
-    void setTrueH(float h);
-    void setTrueS(float s);
-    void setTrueV(float v);
+    void setHue(float h);
+    void setSaturation(float s);
+    void setValue(float v);
+    void setAlpha(float a);
 
     // Getters
+    int getId() const;
     float getX() const;
     float getY() const;
     int getWidth() const;
     int getHeight() const;
     float getRotation() const;
     SDL_Color getColor() const;
-    float getTrueR() const;
-    float getTrueG() const;
-    float getTrueB() const;
-    float getTrueA() const;
-    float getTrueH() const;
-    float getTrueS() const;
-    float getTrueV() const;
+    float getHue() const;
+    float getSaturation() const;
+    float getValue() const;
+    float getAlpha() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     int getTargetWidth() const;
@@ -50,22 +44,17 @@ public:
     void update(float dt, float targetVelocity);
 
 private:
+    int id;
     float xCoord;
     float yCoord;
     int origWidth;
     int origHeight;
     float rotation;
 
-    float trueR;
-    float trueG;
-    float trueB;
-    float trueA;
-
-    float trueH;
-    float trueS;
-    float trueV;
-    
-    SDL_Color color;
+    float hue;
+    float saturation;
+    float value;
+    float alpha;
 
     int fromWidth;
     int fromHeight;

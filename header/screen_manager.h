@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_set>
 #include <SDL2/SDL.h>
 #include "screen.h"
 #include "config.h"
@@ -8,21 +9,24 @@ class ScreenManager {
 public:
     ScreenManager(int width, int height);
 
-    Screen* createScreen(SDL_FPoint pos);
-    Screen* handleSelection(SDL_FPoint mousePos);
+    void createScreen(SDL_FPoint pos);
+    void handleSelection(SDL_FPoint mousePos);
+    void clearSelection();
+    void deleteSelected();
     void handleDragging(SDL_FPoint mousePos);
     void handleScaling(int scrollY);
     void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);
 
-    Screen* getSelectedScreen() const { return selectedScreen; }
-    void setSelectedScreen(Screen* screen) { selectedScreen = screen; }
+    bool isSelected(const Screen& screen) const;
+    std::vector<Screen*> getSelectedScreens();
     const std::vector<Screen>& getScreens() const { return screens; }
 
 private:
     std::vector<Screen> screens;
-    Screen* selectedScreen;
-    SDL_FPoint dragOffset;
+    std::unordered_set<int> selectedIds;
+    int nextId;
+    SDL_FPoint lastMousePos;
     int width;
     int height;
 

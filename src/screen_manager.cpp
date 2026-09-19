@@ -8,28 +8,48 @@
 #include "config.h"
 
 ScreenManager::ScreenManager(int width, int height)
-    : selectedScreen(nullptr), width(width), height(height) {
-    dragOffset = { 0, 0 };
+    : nextId(0), width(width), height(height) {
+    lastMousePos = { 0, 0 };
 }
 
-Screen* ScreenManager::createScreen(SDL_FPoint pos) {
+void ScreenManager::createScreen(SDL_FPoint pos) {
     int initialWidth = static_cast<int>(width * Config::INITIAL_SCREEN_SIZE_RATIO);
     int initialHeight = static_cast<int>(height * Config::INITIAL_SCREEN_SIZE_RATIO);
 
-    screens.emplace_back(pos.x, pos.y, initialWidth, initialHeight, 0,
+    screens.emplace_back(nextId++, pos.x, pos.y, initialWidth, initialHeight, 0,
         Config::DEFAULT_SCREEN_COLOR);
-    return &screens.back();
 }
 
-Screen* ScreenManager::handleSelection(SDL_FPoint mousePos) {
-    selectedScreen = findScreenAtPosition(mousePos.x, mousePos.y);
-    if (selectedScreen) {
-        dragOffset = {
-            mousePos.x - selectedScreen->getX(),
-            mousePos.y - selectedScreen->getY()
-        };
+void ScreenManager::handleSelection(SDL_FPoint mousePos) {
+    selectedIds.clear();
+    lastMousePos = mousePos;
+    if (Screen* hit = findScreenAtPosition(mousePos.x, mousePos.y)) {
+        selectedIds.insert(hit->getId());
     }
-    return selectedScreen;
+}
+
+void ScreenManager::clearSelection() {
+    selectedIds.clear();
+}
+
+void ScreenManager::deleteSelected() {
+    screens.erase(std::remove_if(screens.begin(), screens.end(),
+        [this](const Screen& s) { return isSelected(s); }), screens.end());
+    selectedIds.clear();
+}
+
+bool ScreenManager::isSelected(const Screen& screen) const {
+    return selectedIds.count(screen.getId()) > 0;
+}
+
+std::vector<Screen*> ScreenManager::getSelectedScreens() {
+    std::vector<Screen*> selected;
+    for (auto& screen : screens) {
+        if (isSelected(screen)) {
+            selected.push_back(&screen);
+        }
+    }
+    return selected;
 }
 
 Screen* ScreenManager::findScreenAtPosition(float x, float y) const {
@@ -74,31 +94,38 @@ Screen* ScreenManager::selectSmallestFromCandidates(const std::vector<Screen*>& 
 }
 
 void ScreenManager::handleDragging(SDL_FPoint mousePos) {
-    if (selectedScreen && (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) {
-        float newX = mousePos.x - dragOffset.x;
-        float newY = mousePos.y - dragOffset.y;
+    const float dx = mousePos.x - lastMousePos.x;
+    const float dy = mousePos.y - lastMousePos.y;
+    lastMousePos = mousePos;
 
-        selectedScreen->moveTo(newX, newY);
+    if (!(SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) return;
+
+    for (Screen* screen : getSelectedScreens()) {
+        screen->moveTo(screen->getTargetX() + dx, screen->getTargetY() + dy);
     }
 }
 
 void ScreenManager::handleScaling(int scrollY) {
-    if (selectedScreen && scrollY) {
-        float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
+    if (!scrollY) return;
 
-        int newWidth = static_cast<int>(selectedScreen->getTargetWidth() * scaleFactor);
-        int newHeight = static_cast<int>(selectedScreen->getTargetHeight() * scaleFactor);
+    const float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
+    const int maxWidth = static_cast<int>(width * Config::MAX_SCREEN_RATIO);
+    const int maxHeight = static_cast<int>(height * Config::MAX_SCREEN_RATIO);
 
-        newWidth = std::max(10, std::min(newWidth, static_cast<int>(width * Config::MAX_SCREEN_RATIO)));
-        newHeight = std::max(10, std::min(newHeight, static_cast<int>(height * Config::MAX_SCREEN_RATIO)));
+    for (Screen* screen : getSelectedScreens()) {
+        int newWidth = static_cast<int>(screen->getTargetWidth() * scaleFactor);
+        int newHeight = static_cast<int>(screen->getTargetHeight() * scaleFactor);
 
-        selectedScreen->startScale(newWidth, newHeight);
+        newWidth = std::max(10, std::min(newWidth, maxWidth));
+        newHeight = std::max(10, std::min(newHeight, maxHeight));
+
+        screen->startScale(newWidth, newHeight);
     }
 }
 
 void ScreenManager::update(float dt, int rotateInput) {
     for (auto& screen : screens) {
-        const float target = (&screen == selectedScreen) ? rotateInput * Config::ROTATION_SPEED : 0.0f;
+        const float target = isSelected(screen) ? rotateInput * Config::ROTATION_SPEED : 0.0f;
         screen.update(dt, target);
     }
 }

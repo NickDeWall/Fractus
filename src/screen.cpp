@@ -6,14 +6,11 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-Screen::Screen(float x, float y, int width, int height, float rotation, SDL_Color color)
-    : xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation), color(color),
+Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
+    : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
       fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y) {
-    trueR = static_cast<float>(color.r);
-    trueG = static_cast<float>(color.g);
-    trueB = static_cast<float>(color.b);
-    trueA = static_cast<float>(color.a);
-    MathUtils::rgbToHsv(trueR, trueG, trueB, trueH, trueS, trueV);
+    MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
+    alpha = color.a / 255.0f;
 }
 
 void Screen::setX(float x) {
@@ -36,39 +33,25 @@ void Screen::setRotation(float rot) {
     rotation = rot;
 }
 
-void Screen::setColor(SDL_Color col) {
-    color = col;
-    
+void Screen::setHue(float h) {
+    hue = h - std::floor(h);
 }
 
-void Screen::setTrueR(float r) {
-    trueR = r;
+void Screen::setSaturation(float s) {
+    saturation = std::clamp(s, 0.0f, 1.0f);
 }
 
-void Screen::setTrueG(float g) {
-    trueG = g;
+void Screen::setValue(float v) {
+    value = std::clamp(v, 0.0f, 1.0f);
 }
 
-void Screen::setTrueB(float b) {
-    trueB = b;
+void Screen::setAlpha(float a) {
+    alpha = std::clamp(a, 0.0f, 1.0f);
 }
 
-void Screen::setTrueA(float a) {
-    trueA = a;
+int Screen::getId() const {
+    return id;
 }
-
-void Screen::setTrueH(float h) {
-    trueH = h;
-}
-
-void Screen::setTrueS(float s) {
-    trueS = s;
-}
-
-void Screen::setTrueV(float v) {
-    trueV = v;
-}
-
 
 float Screen::getX() const {
     return xCoord;
@@ -91,42 +74,39 @@ float Screen::getRotation() const {
 }
 
 SDL_Color Screen::getColor() const {
-    return color;
+    float r, g, b;
+    MathUtils::hsvToRgb(hue, saturation, value, r, g, b);
+    return {
+        static_cast<Uint8>(std::lround(r)),
+        static_cast<Uint8>(std::lround(g)),
+        static_cast<Uint8>(std::lround(b)),
+        static_cast<Uint8>(std::lround(alpha * 255.0f))
+    };
 }
 
-float Screen::getTrueR() const {
-    return trueR;
+float Screen::getHue() const {
+    return hue;
 }
 
-float Screen::getTrueG() const {
-    return trueG;
+float Screen::getSaturation() const {
+    return saturation;
 }
 
-float Screen::getTrueB() const {
-    return trueB;
+float Screen::getValue() const {
+    return value;
 }
 
-float Screen::getTrueA() const {
-    return trueA;
-}
-
-float Screen::getTrueH() const {
-    return trueH; 
-}
-
-float Screen::getTrueS() const {
-    return trueS; 
-}
-
-float Screen::getTrueV() const {
-    return trueV; 
+float Screen::getAlpha() const {
+    return alpha;
 }
 
 SDL_Color Screen::getOutlineColor() const {
+    const SDL_Color color = getColor();
     return { color.r, color.g, color.b, Config::OUTLINE_ALPHA };
 }
 
 SDL_Color Screen::getScaleOutlineColor() const {
+    const SDL_Color color = getColor();
     return { color.r, color.g, color.b,
              static_cast<Uint8>(std::min(255, static_cast<int>(Config::OUTLINE_ALPHA + Config::OUTLINE_SCALE_INCREASE))) };
 }

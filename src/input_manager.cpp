@@ -416,8 +416,10 @@ void InputManager::handleScalingMotion(const SDL_Event& event) {
 void InputManager::handleExitScaling(const SDL_Event& event) {
     if (event.key.keysym.sym == SDLK_SPACE && scalingMode) {
         scalingMode = false;
-        screenManager->getSelectedScreen()->setWidth(tempWidth);
-        screenManager->getSelectedScreen()->setHeight(tempHeight);
+        for (Screen* screen : screenManager->getSelectedScreens()) {
+            screen->setWidth(tempWidth);
+            screen->setHeight(tempHeight);
+        }
     }
 }
 
@@ -427,31 +429,18 @@ void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
     case SDL_BUTTON_LEFT:
         screenManager->handleSelection(pos);
         break;
-    case SDL_BUTTON_MIDDLE: {
-        Screen* newScreen = screenManager->createScreen(pos);
+    case SDL_BUTTON_MIDDLE:
+        screenManager->createScreen(pos);
         screenManager->handleSelection(pos);
         break;
-    }
     case SDL_BUTTON_RIGHT:
         screenManager->handleSelection(pos);
-        if (screenManager->getSelectedScreen()) {
-            Screen* selected = screenManager->getSelectedScreen();
-            auto& screens = const_cast<std::vector<Screen>&>(screenManager->getScreens());
-            auto it = std::find_if(screens.begin(), screens.end(),
-                [selected](const Screen& s) { return &s == selected; });
-            if (it != screens.end()) {
-                screens.erase(it);
-            }
-            screenManager = std::make_unique<ScreenManager>(*screenManager);
-        }
-        screenManager->setSelectedScreen(nullptr);
+        screenManager->deleteSelected();
         break;
     }
 }
 
 void InputManager::handleKeyPress(const std::string& event) {
-    Screen* selected = screenManager->getSelectedScreen();
-    if (!selected) return;
     if (event == "cycle_hue_up") {
         handleColorRotation(1);
     }
@@ -473,59 +462,24 @@ void InputManager::handleKeyPress(const std::string& event) {
 }
 
 void InputManager::handleColorRotation(const int& dir) {
-    Screen* selected = screenManager->getSelectedScreen();
-    if (!selected) return;
-    float h = selected->getTrueH();
-    float s = selected->getTrueS();
-    float v = selected->getTrueV();
-    h = fmod(h + (dir * (Config::COLOR_ROTATION_SPEED * deltaTime)), 1.0f);
-    selected->setTrueH(h);
-    float r, g, b;
-    MathUtils::hsvToRgb(h, s, v, r, g, b);
-    SDL_Color newColor = { 
-        static_cast<Uint8>(std::round(r)), 
-        static_cast<Uint8>(std::round(g)), 
-        static_cast<Uint8>(std::round(b)), 
-        static_cast<Uint8>(std::round(selected->getTrueA()))
-    };
-    selected->setColor(newColor);
+    for (Screen* screen : screenManager->getSelectedScreens()) {
+        screen->setHue(screen->getHue() + dir * Config::COLOR_ROTATION_SPEED * deltaTime);
+    }
 }
 
-
 void InputManager::handleSaturation(const int& dir) {
-    Screen* selected = screenManager->getSelectedScreen();
-    if (!selected) return;
-    float h = selected->getTrueH();
-    float s = selected->getTrueS();
-    float v = selected->getTrueV();
-    if (dir == 1)
-        s = std::min(s + (Config::SATURATION_CYCLE_SPEED * deltaTime), 1.0f);
-    else if (dir == -1)
-        s = std::max(s - (Config::SATURATION_CYCLE_SPEED * deltaTime), 0.0f);
-    selected->setTrueS(s);
-    float r, g, b;
-    MathUtils::hsvToRgb(h, s, v, r, g, b);
-    SDL_Color newColor = { 
-        static_cast<Uint8>(std::round(r)), 
-        static_cast<Uint8>(std::round(g)), 
-        static_cast<Uint8>(std::round(b)), 
-        static_cast<Uint8>(std::round(selected->getTrueA()))};
-    selected->setColor(newColor);
+    for (Screen* screen : screenManager->getSelectedScreens()) {
+        screen->setSaturation(screen->getSaturation() + dir * Config::SATURATION_CYCLE_SPEED * deltaTime);
+    }
 }
 
 void InputManager::handleAlpha(const int& dir) {
-    Screen* selected = screenManager->getSelectedScreen();
-    if (!selected) return;
-    
-    float currentAlpha = selected->getTrueA();
-    float change = Config::ALPHA_CHANGE_SPEED * deltaTime * dir;
-    float newAlpha = std::clamp(currentAlpha + change, 0.0f, static_cast<float>(Config::MAX_SCREEN_ALPHA));
-    
-    selected->setTrueA(newAlpha);
-    
-    SDL_Color color = selected->getColor();
-    SDL_Color newColor = { color.r, color.g, color.b, static_cast<Uint8>(std::round(newAlpha)) };
-    selected->setColor(newColor);
+    const float cap = Config::MAX_SCREEN_ALPHA / 255.0f;
+    for (Screen* screen : screenManager->getSelectedScreens()) {
+        const float current = screen->getAlpha();
+        const float next = current + dir * (Config::ALPHA_CHANGE_SPEED / 255.0f) * deltaTime;
+        screen->setAlpha(std::min(next, std::max(current, cap)));
+    }
 }
 
 void InputManager::update() {
@@ -559,7 +513,9 @@ void InputManager::draw() {
 
     fractalManager->renderCurrentFrame();
     
-    OtherRenders::renderSelectionOutline(screenManager->getSelectedScreen(), scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
+    for (Screen* screen : screenManager->getSelectedScreens()) {
+        OtherRenders::renderSelectionOutline(screen, scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
+    }
 
     if (Config::SHOW_FPS) {
         drawFPS();

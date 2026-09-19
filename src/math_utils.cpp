@@ -8,7 +8,7 @@
 namespace MathUtils {
     void hsvToRgb(float h, float s, float v, float& r, float& g, float& b) {
         if (s <= 0.0f) {
-            r = g = b = static_cast<Uint8>(v * 255);
+            r = g = b = v * 255.0f;
             return;
         }
 
@@ -20,13 +20,16 @@ namespace MathUtils {
         float t = v * (1.0f - s * (1.0f - f));
 
         switch (i) {
-        case 0: r = static_cast<Uint8>(v * 255); g = static_cast<Uint8>(t * 255); b = static_cast<Uint8>(p * 255); break;
-        case 1: r = static_cast<Uint8>(q * 255); g = static_cast<Uint8>(v * 255); b = static_cast<Uint8>(p * 255); break;
-        case 2: r = static_cast<Uint8>(p * 255); g = static_cast<Uint8>(v * 255); b = static_cast<Uint8>(t * 255); break;
-        case 3: r = static_cast<Uint8>(p * 255); g = static_cast<Uint8>(q * 255); b = static_cast<Uint8>(v * 255); break;
-        case 4: r = static_cast<Uint8>(t * 255); g = static_cast<Uint8>(p * 255); b = static_cast<Uint8>(v * 255); break;
-        default: r = static_cast<Uint8>(v * 255); g = static_cast<Uint8>(p * 255); b = static_cast<Uint8>(q * 255); break;
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        default: r = v; g = p; b = q; break;
         }
+        r *= 255.0f;
+        g *= 255.0f;
+        b *= 255.0f;
     }
 
     void rgbToHsv(float r, float g, float b, float& h, float& s, float& v) {
