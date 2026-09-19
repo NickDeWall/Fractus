@@ -2,7 +2,6 @@
 #include "screen.h"
 #include "screen_manager.h"
 #include "config.h"
-#include <cmath>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
@@ -127,9 +126,7 @@ void UiManager::drawSizeSlider(ScreenManager& screenManager, const std::vector<S
         const auto base = sizeBaseline.find(screen->getId());
         if (base == sizeBaseline.end()) continue;
 
-        const SDL_Point size = screenManager.clampSize(
-            static_cast<int>(std::lround(base->second.x * ratio)),
-            static_cast<int>(std::lround(base->second.y * ratio)));
+        const SDL_FPoint size = screenManager.clampSize(base->second.x * ratio, base->second.y * ratio);
         screen->setWidth(size.x);
         screen->setHeight(size.y);
     }

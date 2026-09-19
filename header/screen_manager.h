@@ -18,7 +18,7 @@ public:
     void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);
 
-    SDL_Point clampSize(int screenWidth, int screenHeight) const;
+    SDL_FPoint clampSize(float screenWidth, float screenHeight) const;
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     bool isSelected(const Screen& screen) const;

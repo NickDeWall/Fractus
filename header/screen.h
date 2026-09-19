@@ -9,8 +9,8 @@ public:
     // Setters
     void setX(float x);
     void setY(float y);
-    void setWidth(int width);
-    void setHeight(int height);
+    void setWidth(float width);
+    void setHeight(float height);
     void setRotation(float rotation);
     void setHue(float h);
     void setSaturation(float s);
@@ -31,15 +31,15 @@ public:
     float getAlpha() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
-    int getTargetWidth() const;
+    float getTargetWidth() const;
     float getTargetX() const;
     float getTargetY() const;
-    int getTargetHeight() const;
+    float getTargetHeight() const;
 
     // Actions
     void rotate(float degrees);
     SDL_FPoint getRotatedSize() const;
-    void startScale(int width, int height);
+    void startScale(float width, float height);
     void moveTo(float x, float y);
     void update(float dt, float targetVelocity);
 
@@ -47,8 +47,8 @@ private:
     int id;
     float xCoord;
     float yCoord;
-    int origWidth;
-    int origHeight;
+    float origWidth;
+    float origHeight;
     float rotation;
 
     float hue;
@@ -56,10 +56,10 @@ private:
     float value;
     float alpha;
 
-    int fromWidth;
-    int fromHeight;
-    int targetWidth;
-    int targetHeight;
+    float fromWidth;
+    float fromHeight;
+    float targetWidth;
+    float targetHeight;
     float scaleProgress;
     float angularVelocity;
     float targetX;

@@ -111,19 +111,21 @@ void ScreenManager::handleScaling(int scrollY) {
     const float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
 
     for (Screen* screen : getSelectedScreens()) {
-        const SDL_Point size = clampSize(static_cast<int>(screen->getTargetWidth() * scaleFactor),
-            static_cast<int>(screen->getTargetHeight() * scaleFactor));
+        const SDL_FPoint size = clampSize(screen->getTargetWidth() * scaleFactor,
+            screen->getTargetHeight() * scaleFactor);
         screen->startScale(size.x, size.y);
     }
 }
 
-SDL_Point ScreenManager::clampSize(int screenWidth, int screenHeight) const {
-    const int maxWidth = static_cast<int>(width * Config::MAX_SCREEN_RATIO);
-    const int maxHeight = static_cast<int>(height * Config::MAX_SCREEN_RATIO);
-    return {
-        std::max(10, std::min(screenWidth, maxWidth)),
-        std::max(10, std::min(screenHeight, maxHeight))
-    };
+SDL_FPoint ScreenManager::clampSize(float screenWidth, float screenHeight) const {
+    const float minSize = 10.0f;
+    const float maxWidth = width * Config::MAX_SCREEN_RATIO;
+    const float maxHeight = height * Config::MAX_SCREEN_RATIO;
+
+    float scale = std::min({ 1.0f, maxWidth / screenWidth, maxHeight / screenHeight });
+    scale = std::max({ scale, minSize / screenWidth, minSize / screenHeight });
+
+    return { screenWidth * scale, screenHeight * scale };
 }
 
 void ScreenManager::update(float dt, int rotateInput) {
@@ -148,8 +150,8 @@ void ScreenManager::resize(int newWidth, int newHeight) {
     for (auto& screen : screens) {
         screen.setX(screen.getTargetX() * scaleX);
         screen.setY(screen.getTargetY() * scaleY);
-        screen.setWidth(std::max(1, static_cast<int>(std::lround(screen.getTargetWidth() * scaleX))));
-        screen.setHeight(std::max(1, static_cast<int>(std::lround(screen.getTargetHeight() * scaleY))));
+        screen.setWidth(std::max(1.0f, screen.getTargetWidth() * scaleX));
+        screen.setHeight(std::max(1.0f, screen.getTargetHeight() * scaleY));
     }
 
     width = newWidth;

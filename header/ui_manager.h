@@ -26,7 +26,7 @@ private:
 
     bool sizeEditing = false;
     float sizeBasePercent = 0.0f;
-    std::unordered_map<int, SDL_Point> sizeBaseline;
+    std::unordered_map<int, SDL_FPoint> sizeBaseline;
 
     void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);

@@ -21,11 +21,11 @@ void Screen::setY(float y) {
     yCoord = targetY = y;
 }
 
-void Screen::setWidth(int width) {
+void Screen::setWidth(float width) {
     origWidth = fromWidth = targetWidth = width;
 }
 
-void Screen::setHeight(int height) {
+void Screen::setHeight(float height) {
     origHeight = fromHeight = targetHeight = height;
 }
 
@@ -62,11 +62,11 @@ float Screen::getY() const {
 }
 
 int Screen::getWidth() const {
-    return origWidth;
+    return static_cast<int>(std::lround(origWidth));
 }
 
 int Screen::getHeight() const {
-    return origHeight;
+    return static_cast<int>(std::lround(origHeight));
 }
 
 float Screen::getRotation() const {
@@ -118,11 +118,11 @@ SDL_Color Screen::getScaleOutlineColor() const {
              static_cast<Uint8>(std::min(255, static_cast<int>(Config::OUTLINE_ALPHA + Config::OUTLINE_SCALE_INCREASE))) };
 }
 
-int Screen::getTargetWidth() const {
+float Screen::getTargetWidth() const {
     return targetWidth;
 }
 
-int Screen::getTargetHeight() const {
+float Screen::getTargetHeight() const {
     return targetHeight;
 }
 
@@ -139,8 +139,8 @@ void Screen::rotate(float degrees) {
 }
 
 SDL_FPoint Screen::getRotatedSize() const {
-    float w = static_cast<float>(origWidth);
-    float h = static_cast<float>(origHeight);
+    float w = origWidth;
+    float h = origHeight;
     float angleRad = rotation * Config::PI / 180.0f;
 
     float cos_a = std::abs(std::cos(angleRad));
@@ -152,7 +152,7 @@ SDL_FPoint Screen::getRotatedSize() const {
     return { newW, newH };
 }
 
-void Screen::startScale(int width, int height) {
+void Screen::startScale(float width, float height) {
     fromWidth = origWidth;
     fromHeight = origHeight;
     targetWidth = width;
@@ -177,6 +177,6 @@ void Screen::update(float dt, float targetVelocity) {
 
     if (scaleProgress >= 1.0f) return;
     scaleProgress = std::min(1.0f, scaleProgress + dt / Config::SCALE_DURATION);
-    origWidth = static_cast<int>(std::lround(MathUtils::easeOutPowerInterpolate(fromWidth, targetWidth, scaleProgress, Config::SCALE_EASE_STRENGTH)));
-    origHeight = static_cast<int>(std::lround(MathUtils::easeOutPowerInterpolate(fromHeight, targetHeight, scaleProgress, Config::SCALE_EASE_STRENGTH)));
+    origWidth = static_cast<float>(MathUtils::easeOutPowerInterpolate(fromWidth, targetWidth, scaleProgress, Config::SCALE_EASE_STRENGTH));
+    origHeight = static_cast<float>(MathUtils::easeOutPowerInterpolate(fromHeight, targetHeight, scaleProgress, Config::SCALE_EASE_STRENGTH));
 }
