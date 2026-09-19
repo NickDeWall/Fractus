@@ -93,12 +93,12 @@ Screen* ScreenManager::selectSmallestFromCandidates(const std::vector<Screen*>& 
         });
 }
 
-void ScreenManager::handleDragging(SDL_FPoint mousePos) {
+void ScreenManager::handleDragging(SDL_FPoint mousePos, bool enabled) {
     const float dx = mousePos.x - lastMousePos.x;
     const float dy = mousePos.y - lastMousePos.y;
     lastMousePos = mousePos;
 
-    if (!(SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) return;
+    if (!enabled || !(SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) return;
 
     for (Screen* screen : getSelectedScreens()) {
         screen->moveTo(screen->getTargetX() + dx, screen->getTargetY() + dy);

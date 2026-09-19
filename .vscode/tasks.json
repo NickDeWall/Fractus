@@ -18,16 +18,25 @@
                 "${workspaceFolder}\\src\\fractal_manager.cpp",
                 "${workspaceFolder}\\src\\shader_manager.cpp",
                 "${workspaceFolder}\\src\\math_utils.cpp",
-                "-I${workspaceFolder}\\header",      
+                "${workspaceFolder}\\src\\ui_manager.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_draw.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_tables.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_widgets.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_impl_sdl2.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_impl_opengl3.cpp",
+                "-I${workspaceFolder}\\header",
+                "-I${workspaceFolder}\\third_party\\imgui",
+                "-IC:\\msys64\\mingw64\\include\\SDL2",
                 "-LC:\\msys64\\mingw64\\lib",
                 "-lSDL2main",
                 "-lSDL2",
                 "-lSDL2_ttf",
-                "-lfreetype", 
+                "-lfreetype",
                 "-lharfbuzz",
                 "-lgraphite2",
                 "-lbrotlidec",
-                "-lbrotlienc", 
+                "-lbrotlienc",
                 "-lbrotlicommon",
                 "-lrpcrt4",
                 "-ldwrite",
@@ -55,7 +64,9 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
         },
         {
             "label": "Build Fractus (Dynamic)",
@@ -72,7 +83,16 @@
                 "${workspaceFolder}\\src\\fractal_manager.cpp",
                 "${workspaceFolder}\\src\\shader_manager.cpp",
                 "${workspaceFolder}\\src\\math_utils.cpp",
+                "${workspaceFolder}\\src\\ui_manager.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_draw.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_tables.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_widgets.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_impl_sdl2.cpp",
+                "${workspaceFolder}\\third_party\\imgui\\imgui_impl_opengl3.cpp",
                 "-I${workspaceFolder}\\header",
+                "-I${workspaceFolder}\\third_party\\imgui",
+                "-IC:\\msys64\\mingw64\\include\\SDL2",
                 "-IC:\\msys64\\mingw64\\include",
                 "-LC:\\msys64\\mingw64\\lib",
                 "-lmingw32",
@@ -81,6 +101,7 @@
                 "-lSDL2_ttf",
                 "-lglew32",
                 "-lopengl32",
+                "-limm32",
                 "-mwindows",
                 "-O3"
             ],
@@ -88,7 +109,9 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": ["$gcc"]
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

@@ -7,6 +7,7 @@
 #include <string>
 #include "screen_manager.h"
 #include "fractal_manager.h"
+#include "ui_manager.h"
 
 class InputManager {
 private:
@@ -19,6 +20,7 @@ private:
     
     std::unique_ptr<FractalManager> fractalManager;
     std::unique_ptr<ScreenManager> screenManager;
+    std::unique_ptr<UiManager> ui;
     
     bool running = true;
     bool minimized = false;

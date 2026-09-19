@@ -13,7 +13,7 @@ public:
     void handleSelection(SDL_FPoint mousePos);
     void clearSelection();
     void deleteSelected();
-    void handleDragging(SDL_FPoint mousePos);
+    void handleDragging(SDL_FPoint mousePos, bool enabled);
     void handleScaling(int scrollY);
     void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);

@@ -137,6 +137,7 @@ InputManager::InputManager() {
     glBindVertexArray(0);
     fractalManager = std::make_unique<FractalManager>(width, height, textureShaderProgram, colorShaderProgram, projection);
     screenManager = std::make_unique<ScreenManager>(width, height);
+    ui = std::make_unique<UiManager>(window, glContext);
     frameCounter = 0;
     scalingMode = false;
     scaleStartPos = { 0, 0 };
@@ -166,6 +167,7 @@ InputManager::InputManager() {
 }
 
 InputManager::~InputManager() {
+    ui.reset();
     if (frozenFrame) {
         glDeleteTextures(1, &frozenFrame);
     }
@@ -322,16 +324,17 @@ void InputManager::handleResize() {
 bool InputManager::handleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+        ui->processEvent(event);
         switch (event.type) {
         case SDL_QUIT:
             return false;
         case SDL_MOUSEBUTTONDOWN:
-            if (!scalingMode) {
+            if (!scalingMode && !ui->wantsMouse()) {
                 handleMouseClick(event.button);
             }
             break;
         case SDL_MOUSEWHEEL:
-            if (!scalingMode) {
+            if (!scalingMode && !ui->wantsMouse()) {
                 screenManager->handleScaling(event.wheel.y);
             }
             break;
@@ -350,9 +353,18 @@ bool InputManager::handleEvents() {
             }
             break;
         case SDL_KEYDOWN:
-            if (event.key.repeat == 0) {
+            if (event.key.repeat == 0 && !ui->wantsKeyboard()) {
                 const SDL_Keycode sym = event.key.keysym.sym;
-                if (sym == SDLK_RSHIFT || sym == SDLK_F11 ||
+                if (sym == SDLK_ESCAPE) {
+                    if (!ui->isScreenMenuOpen()) {
+                        return false;
+                    }
+                    ui->closeScreenMenu();
+                }
+                else if (sym == SDLK_e && !screenManager->getSelectedScreens().empty()) {
+                    ui->toggleScreenMenu();
+                }
+                else if (sym == SDLK_RSHIFT || sym == SDLK_F11 ||
                     (sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT))) {
                     toggleFullscreen();
                 }
@@ -367,11 +379,12 @@ bool InputManager::handleEvents() {
         }
     }
 
-    const Uint8* keyState = SDL_GetKeyboardState(nullptr);
-    if (keyState[SDL_SCANCODE_ESCAPE]) {
-        return false;
-    }
     rotateInput = 0;
+    if (ui->wantsKeyboard()) {
+        return true;
+    }
+
+    const Uint8* keyState = SDL_GetKeyboardState(nullptr);
     if (keyState[SDL_SCANCODE_D]) {
         rotateInput = 1;
     }
@@ -487,7 +500,7 @@ void InputManager::update() {
         int x, y;
         SDL_GetMouseState(&x, &y);
         SDL_FPoint mousePos = { static_cast<float>(x), static_cast<float>(y) };
-        screenManager->handleDragging(mousePos);
+        screenManager->handleDragging(mousePos, !ui->wantsMouse());
         screenManager->update(deltaTime, rotateInput);
         currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter);
     }
@@ -524,6 +537,8 @@ void InputManager::draw() {
     if (Config::DEV_TOOLS) {
         OtherRenders::renderDebugText(width, height, debugTexture, debugWidth, debugHeight, textureShaderProgram, projection, vao);
     }
+
+    ui->render(screenManager->getSelectedScreens());
 
     SDL_GL_SwapWindow(window);
 }
