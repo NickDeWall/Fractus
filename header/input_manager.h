@@ -31,6 +31,7 @@ private:
     int frameCounter;
     GLuint currentFrame;
     int rotateInput = 0;
+    double elapsedTime = 0.0;
     
     // Scaling mode variables
     bool scalingMode;

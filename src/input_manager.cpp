@@ -502,7 +502,8 @@ void InputManager::update() {
         SDL_FPoint mousePos = { static_cast<float>(x), static_cast<float>(y) };
         screenManager->handleDragging(mousePos, !ui->wantsMouse());
         screenManager->update(deltaTime, rotateInput);
-        currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter);
+        elapsedTime += deltaTime;
+        currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
     }
 }
 

@@ -129,6 +129,9 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         ImGui::Spacing();
         drawRotationControl(selected);
         ImGui::Spacing();
+        drawRateSlider(selected);
+        drawDelaySlider(selected);
+        ImGui::Spacing();
 
         float hsva[4] = { primary->getHue(), primary->getSaturation(), primary->getValue(), primary->getAlpha() };
         const ImGuiColorEditFlags colorFlags = ImGuiColorEditFlags_InputHSV | ImGuiColorEditFlags_AlphaBar |
@@ -206,5 +209,33 @@ void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {
         const auto base = rotationBaseline.find(screen->getId());
         if (base == rotationBaseline.end()) continue;
         screen->setRotation(wrapDegrees(base->second + delta));
+    }
+}
+
+void UiManager::drawRateSlider(const std::vector<Screen*>& selected) {
+    float rate = selected.front()->getUpdateRate();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (!ImGui::SliderFloat("##rate", &rate, Config::MIN_UPDATE_RATE, Config::MAX_UPDATE_RATE, "Refresh %.1f Hz",
+            ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+        return;
+    }
+
+    for (Screen* screen : selected) {
+        screen->setUpdateRate(rate);
+    }
+}
+
+void UiManager::drawDelaySlider(const std::vector<Screen*>& selected) {
+    float delayMs = selected.front()->getDelay() * 1000.0f;
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (!ImGui::SliderFloat("##delay", &delayMs, 0.0f, Config::MAX_DELAY * 1000.0f, "Delay %.0f ms",
+            ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+        return;
+    }
+
+    for (Screen* screen : selected) {
+        screen->setDelay(delayMs / 1000.0f);
     }
 }

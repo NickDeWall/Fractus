@@ -35,4 +35,6 @@ private:
     void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawRotationControl(const std::vector<Screen*>& selected);
+    void drawRateSlider(const std::vector<Screen*>& selected);
+    void drawDelaySlider(const std::vector<Screen*>& selected);
 };

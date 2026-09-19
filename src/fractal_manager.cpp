@@ -1,4 +1,6 @@
 #include "fractal_manager.h"
+#include "math_utils.h"
+#include <algorithm>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <GL/glew.h>
@@ -29,6 +31,7 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
     this->projection = projection;
 
     glGenFramebuffers(1, &fbo);
+    glGenFramebuffers(1, &snapshotFbo);
     
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, previousTexture, 0);
@@ -56,6 +59,8 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
 }
 
 FractalManager::~FractalManager() {
+    clearSnapshots();
+    glDeleteFramebuffers(1, &snapshotFbo);
     glDeleteTextures(1, &currentTexture);
     glDeleteTextures(1, &previousTexture);
     glDeleteFramebuffers(1, &fbo);
@@ -76,7 +81,175 @@ GLuint FractalManager::createTexture(int w, int h) {
     return texture;
 }
 
-GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int frameCounter) {
+void FractalManager::copyFrame(GLuint source, int sourceW, int sourceH, GLuint destination, int destinationW, int destinationH) {
+    const GLenum filter = (sourceW == destinationW && sourceH == destinationH) ? GL_NEAREST : GL_LINEAR;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, source, 0);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, snapshotFbo);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, destination, 0);
+    glBlitFramebuffer(0, 0, sourceW, sourceH, 0, 0, destinationW, destinationH, GL_COLOR_BUFFER_BIT, filter);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void FractalManager::storeFrame(Frame& destination, GLuint source, int sourceW, int sourceH, int w, int h) {
+    if (destination.texture == 0 || destination.width != w || destination.height != h) {
+        if (destination.texture != 0) {
+            glDeleteTextures(1, &destination.texture);
+        }
+        destination.texture = createTexture(w, h);
+        destination.width = w;
+        destination.height = h;
+    }
+    copyFrame(source, sourceW, sourceH, destination.texture, w, h);
+}
+
+void FractalManager::historySize(const Screen& screen, int& outW, int& outH) const {
+    const int stepW = std::max(1, renderWidth / Config::HISTORY_SIZE_STEPS);
+    const int stepH = std::max(1, renderHeight / Config::HISTORY_SIZE_STEPS);
+    const float pixelsW = screen.getWidth() * static_cast<float>(renderWidth) / width;
+    const float pixelsH = screen.getHeight() * static_cast<float>(renderHeight) / height;
+    outW = std::clamp(static_cast<int>(std::ceil(pixelsW / stepW)) * stepW, stepW, renderWidth);
+    outH = std::clamp(static_cast<int>(std::ceil(pixelsH / stepH)) * stepH, stepH, renderHeight);
+}
+
+void FractalManager::updateDelayed(const Screen& screen, double time) {
+    DelayState& state = delayed[screen.getId()];
+    state.used = true;
+
+    const float delay = screen.getDelay();
+    const float captureRate = static_cast<float>(MathUtils::linearInterpolate(
+        Config::CAPTURE_RATE_NO_DELAY, Config::CAPTURE_RATE_MAX_DELAY, delay / Config::MAX_DELAY));
+    const size_t capacity = static_cast<size_t>(std::ceil(delay * captureRate)) + 2;
+
+    while (state.history.size() > capacity) {
+        glDeleteTextures(1, &state.history.front().texture);
+        state.history.pop_front();
+    }
+
+    const long long captureTick = static_cast<long long>(std::floor(time * captureRate));
+    if (captureTick != state.captureTick || state.history.empty()) {
+        state.captureTick = captureTick;
+
+        Frame frame;
+        if (state.history.size() >= capacity) {
+            frame = state.history.front();
+            state.history.pop_front();
+        }
+
+        int w, h;
+        historySize(screen, w, h);
+        storeFrame(frame, previousTexture, renderWidth, renderHeight, w, h);
+        frame.time = time;
+        state.history.push_back(frame);
+    }
+
+    const long long refreshTick = static_cast<long long>(std::floor(time * screen.getUpdateRate()));
+    if (refreshTick == state.refreshTick && state.held.texture != 0) return;
+    state.refreshTick = refreshTick;
+
+    const double target = time - delay;
+    const Frame* source = &state.history.front();
+    for (auto it = state.history.rbegin(); it != state.history.rend(); ++it) {
+        if (it->time <= target) {
+            source = &*it;
+            break;
+        }
+    }
+    storeFrame(state.held, source->texture, source->width, source->height, source->width, source->height);
+}
+
+void FractalManager::deleteDelayState(DelayState& state) {
+    for (auto& frame : state.history) {
+        glDeleteTextures(1, &frame.texture);
+    }
+    state.history.clear();
+    if (state.held.texture != 0) {
+        glDeleteTextures(1, &state.held.texture);
+        state.held.texture = 0;
+    }
+}
+
+GLuint FractalManager::screenTexture(const Screen& screen) const {
+    if (screen.getDelay() > 0.0f) {
+        return delayed.at(screen.getId()).held.texture;
+    }
+    return snapshots.at(screen.getUpdateRate()).texture;
+}
+
+void FractalManager::updateSnapshots(const std::vector<Screen>& screens, double time) {
+    for (auto& entry : snapshots) {
+        entry.second.used = false;
+    }
+    for (auto& entry : delayed) {
+        entry.second.used = false;
+    }
+
+    for (const auto& screen : screens) {
+        if (screen.getDelay() > 0.0f) {
+            updateDelayed(screen, time);
+            continue;
+        }
+
+        const float rate = screen.getUpdateRate();
+        const long long tick = static_cast<long long>(std::floor(time * rate));
+
+        auto it = snapshots.find(rate);
+        if (it == snapshots.end()) {
+            GLuint texture;
+            if (!spareTextures.empty()) {
+                texture = spareTextures.back();
+                spareTextures.pop_back();
+            } else {
+                texture = createTexture(renderWidth, renderHeight);
+            }
+            it = snapshots.emplace(rate, Snapshot{ texture, tick - 1, false }).first;
+        }
+
+        Snapshot& snapshot = it->second;
+        snapshot.used = true;
+        if (snapshot.tick != tick) {
+            copyFrame(previousTexture, renderWidth, renderHeight, snapshot.texture, renderWidth, renderHeight);
+            snapshot.tick = tick;
+        }
+    }
+
+    for (auto it = snapshots.begin(); it != snapshots.end();) {
+        if (it->second.used) {
+            ++it;
+            continue;
+        }
+        spareTextures.push_back(it->second.texture);
+        it = snapshots.erase(it);
+    }
+
+    for (auto it = delayed.begin(); it != delayed.end();) {
+        if (it->second.used) {
+            ++it;
+            continue;
+        }
+        deleteDelayState(it->second);
+        it = delayed.erase(it);
+    }
+}
+
+void FractalManager::clearSnapshots() {
+    for (auto& entry : snapshots) {
+        glDeleteTextures(1, &entry.second.texture);
+    }
+    snapshots.clear();
+    if (!spareTextures.empty()) {
+        glDeleteTextures(static_cast<GLsizei>(spareTextures.size()), spareTextures.data());
+    }
+    spareTextures.clear();
+    for (auto& entry : delayed) {
+        deleteDelayState(entry.second);
+    }
+    delayed.clear();
+}
+
+GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int frameCounter, double time) {
+    updateSnapshots(screens, time);
+
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, currentTexture, 0);
     
@@ -108,7 +281,7 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         if (colorLoc != -1) glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, previousTexture);
+        glBindTexture(GL_TEXTURE_2D, screenTexture(screen));
         if (texLoc != -1) glUniform1i(texLoc, 0);
         
         glBindVertexArray(vao);
@@ -155,6 +328,8 @@ void FractalManager::resize(int newWidth, int newHeight, const glm::mat4& newPro
     width = newWidth;
     height = newHeight;
     if (!renderSizeChanged) return;
+
+    clearSnapshots();
 
     GLuint newCurrent = createTexture(newRenderWidth, newRenderHeight);
     GLuint newPrevious = createTexture(newRenderWidth, newRenderHeight);

@@ -16,6 +16,8 @@ public:
     void setSaturation(float s);
     void setValue(float v);
     void setAlpha(float a);
+    void setUpdateRate(float rate);
+    void setDelay(float seconds);
 
     // Getters
     int getId() const;
@@ -29,6 +31,8 @@ public:
     float getSaturation() const;
     float getValue() const;
     float getAlpha() const;
+    float getUpdateRate() const;
+    float getDelay() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -64,4 +68,6 @@ private:
     float angularVelocity;
     float targetX;
     float targetY;
+    float updateRate;
+    float delay;
 };

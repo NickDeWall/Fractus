@@ -8,7 +8,7 @@
 
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
-      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y) {
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -48,6 +48,14 @@ void Screen::setValue(float v) {
 
 void Screen::setAlpha(float a) {
     alpha = std::clamp(a, 0.0f, 1.0f);
+}
+
+void Screen::setUpdateRate(float rate) {
+    updateRate = std::clamp(rate, Config::MIN_UPDATE_RATE, Config::MAX_UPDATE_RATE);
+}
+
+void Screen::setDelay(float seconds) {
+    delay = std::clamp(seconds, 0.0f, Config::MAX_DELAY);
 }
 
 int Screen::getId() const {
@@ -96,6 +104,14 @@ float Screen::getValue() const {
 
 float Screen::getAlpha() const {
     return alpha;
+}
+
+float Screen::getUpdateRate() const {
+    return updateRate;
+}
+
+float Screen::getDelay() const {
+    return delay;
 }
 
 SDL_Color Screen::getOutlineColor() const {
