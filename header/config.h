@@ -42,6 +42,9 @@ namespace Config {
     constexpr int KALEIDOSCOPE_DEFAULT_SEGMENTS = 6;
     constexpr int KALEIDOSCOPE_MIN_SEGMENTS = 2;
     constexpr int KALEIDOSCOPE_MAX_SEGMENTS = 24;
+    constexpr float INVERSION_DEFAULT_RADIUS = 0.5f;
+    constexpr float INVERSION_MIN_RADIUS = 0.02f;
+    constexpr float INVERSION_MAX_RADIUS = 2.0f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

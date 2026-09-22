@@ -13,7 +13,8 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
       juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG),
       drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS),
       power(Config::POWER_DEFAULT),
-      kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f) {
+      kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f),
+      inversionRadius(Config::INVERSION_DEFAULT_RADIUS) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -94,6 +95,10 @@ void Screen::setKaleidoscopeSegments(int segments) {
 
 void Screen::setKaleidoscopeAngle(float degrees) {
     kaleidoscopeAngle = degrees - 360.0f * std::floor(degrees / 360.0f);
+}
+
+void Screen::setInversionRadius(float radius) {
+    inversionRadius = std::clamp(radius, Config::INVERSION_MIN_RADIUS, Config::INVERSION_MAX_RADIUS);
 }
 
 int Screen::getId() const {
@@ -186,6 +191,10 @@ int Screen::getKaleidoscopeSegments() const {
 
 float Screen::getKaleidoscopeAngle() const {
     return kaleidoscopeAngle;
+}
+
+float Screen::getInversionRadius() const {
+    return inversionRadius;
 }
 
 SDL_Color Screen::getOutlineColor() const {

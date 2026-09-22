@@ -43,4 +43,5 @@ private:
     void drawDrosteSliders(const std::vector<Screen*>& selected);
     void drawPowerSlider(const std::vector<Screen*>& selected);
     void drawKaleidoscopeSliders(const std::vector<Screen*>& selected);
+    void drawInversionSlider(const std::vector<Screen*>& selected);
 };
