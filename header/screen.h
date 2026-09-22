@@ -8,6 +8,8 @@ enum class DisplayMode {
     LogPolar = 2,
     Julia = 3,
     Droste = 4,
+    Power = 5,
+    Kaleidoscope = 6,
     Count
 };
 
@@ -32,6 +34,9 @@ public:
     void setJuliaC(float real, float imag);
     void setDrosteZoom(float zoom);
     void setDrosteArms(int arms);
+    void setPower(float power);
+    void setKaleidoscopeSegments(int segments);
+    void setKaleidoscopeAngle(float degrees);
 
     // Getters
     int getId() const;
@@ -53,6 +58,9 @@ public:
     float getJuliaImag() const;
     float getDrosteZoom() const;
     int getDrosteArms() const;
+    float getPower() const;
+    int getKaleidoscopeSegments() const;
+    float getKaleidoscopeAngle() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -96,4 +104,7 @@ private:
     float juliaImag;
     float drosteZoom;
     int drosteArms;
+    float power;
+    int kaleidoscopeSegments;
+    float kaleidoscopeAngle;
 };

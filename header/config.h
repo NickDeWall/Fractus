@@ -37,6 +37,11 @@ namespace Config {
     constexpr float DROSTE_MAX_ZOOM = 100.0f;
     constexpr int DROSTE_DEFAULT_ARMS = 1;
     constexpr int DROSTE_ARM_LIMIT = 6;
+    constexpr float POWER_DEFAULT = 3.0f;
+    constexpr float POWER_LIMIT = 4.0f;
+    constexpr int KALEIDOSCOPE_DEFAULT_SEGMENTS = 6;
+    constexpr int KALEIDOSCOPE_MIN_SEGMENTS = 2;
+    constexpr int KALEIDOSCOPE_MAX_SEGMENTS = 24;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

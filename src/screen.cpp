@@ -11,7 +11,9 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
       fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal),
       logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS),
       juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG),
-      drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS) {
+      drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS),
+      power(Config::POWER_DEFAULT),
+      kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -80,6 +82,18 @@ void Screen::setDrosteZoom(float zoom) {
 
 void Screen::setDrosteArms(int arms) {
     drosteArms = std::clamp(arms, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT);
+}
+
+void Screen::setPower(float value) {
+    power = std::clamp(value, -Config::POWER_LIMIT, Config::POWER_LIMIT);
+}
+
+void Screen::setKaleidoscopeSegments(int segments) {
+    kaleidoscopeSegments = std::clamp(segments, Config::KALEIDOSCOPE_MIN_SEGMENTS, Config::KALEIDOSCOPE_MAX_SEGMENTS);
+}
+
+void Screen::setKaleidoscopeAngle(float degrees) {
+    kaleidoscopeAngle = degrees - 360.0f * std::floor(degrees / 360.0f);
 }
 
 int Screen::getId() const {
@@ -160,6 +174,18 @@ float Screen::getDrosteZoom() const {
 
 int Screen::getDrosteArms() const {
     return drosteArms;
+}
+
+float Screen::getPower() const {
+    return power;
+}
+
+int Screen::getKaleidoscopeSegments() const {
+    return kaleidoscopeSegments;
+}
+
+float Screen::getKaleidoscopeAngle() const {
+    return kaleidoscopeAngle;
 }
 
 SDL_Color Screen::getOutlineColor() const {

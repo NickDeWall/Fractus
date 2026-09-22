@@ -29,6 +29,8 @@ namespace {
         const int LOG_POLAR = 2;
         const int JULIA = 3;
         const int DROSTE = 4;
+        const int POWER = 5;
+        const int KALEIDOSCOPE = 6;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -40,6 +42,9 @@ namespace {
         uniform float juliaHeight;
         uniform float drosteZoom;
         uniform float drosteArms;
+        uniform float power;
+        uniform float segments;
+        uniform float wedgeOffset;
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -63,6 +68,26 @@ namespace {
                 float turn = fract(atan(z.y, z.x) / TAU);
                 float rings = log(max(length(z), 1e-6)) / log(drosteZoom);
                 uv = vec2(fract(rings + drosteArms * turn), turn);
+            } else if (mode == POWER) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                float radius = pow(max(length(z), 1e-6) * 2.0, power) * 0.5;
+                float angle = atan(z.y, z.x) * power;
+                uv = vec2(0.5 + radius * cos(angle) / aspect, 0.5 + radius * sin(angle));
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
+            } else if (mode == KALEIDOSCOPE) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                float wedge = TAU / segments;
+                float angle = mod(atan(z.y, z.x) - wedgeOffset, wedge);
+                angle = min(angle, wedge - angle) + wedgeOffset;
+                float radius = length(z);
+                uv = vec2(0.5 + radius * cos(angle) / aspect, 0.5 + radius * sin(angle));
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
             }
             fragColor = texture(tex, uv) * color;
         }
@@ -348,6 +373,9 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1f(glGetUniformLocation(screenShaderProgram, "juliaHeight"), Config::JULIA_VIEW_HEIGHT);
             glUniform1f(glGetUniformLocation(screenShaderProgram, "drosteZoom"), screen.getDrosteZoom());
             glUniform1f(glGetUniformLocation(screenShaderProgram, "drosteArms"), static_cast<float>(screen.getDrosteArms()));
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "power"), screen.getPower());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "segments"), static_cast<float>(screen.getKaleidoscopeSegments()));
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "wedgeOffset"), screen.getKaleidoscopeAngle() * static_cast<float>(Config::PI) / 180.0f);
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

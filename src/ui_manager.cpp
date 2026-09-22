@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 
@@ -137,6 +137,10 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
             drawJuliaSliders(selected);
         } else if (selected.front()->getDisplayMode() == DisplayMode::Droste) {
             drawDrosteSliders(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Power) {
+            drawPowerSlider(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Kaleidoscope) {
+            drawKaleidoscopeSliders(selected);
         }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
@@ -319,6 +323,40 @@ void UiManager::drawDrosteSliders(const std::vector<Screen*>& selected) {
             ImGuiSliderFlags_AlwaysClamp)) {
         for (Screen* screen : selected) {
             screen->setDrosteArms(arms);
+        }
+    }
+}
+
+void UiManager::drawPowerSlider(const std::vector<Screen*>& selected) {
+    float power = selected.front()->getPower();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (!ImGui::SliderFloat("##power", &power, -Config::POWER_LIMIT, Config::POWER_LIMIT, "Power %.2f",
+            ImGuiSliderFlags_AlwaysClamp)) {
+        return;
+    }
+
+    for (Screen* screen : selected) {
+        screen->setPower(power);
+    }
+}
+
+void UiManager::drawKaleidoscopeSliders(const std::vector<Screen*>& selected) {
+    int segments = selected.front()->getKaleidoscopeSegments();
+    float angle = selected.front()->getKaleidoscopeAngle();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderInt("##kaleidoscopeSegments", &segments, Config::KALEIDOSCOPE_MIN_SEGMENTS, Config::KALEIDOSCOPE_MAX_SEGMENTS,
+            "Segments %d", ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setKaleidoscopeSegments(segments);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##kaleidoscopeAngle", &angle, 0.0f, 360.0f, "Wedge angle %.1f\xC2\xB0", ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setKaleidoscopeAngle(angle);
         }
     }
 }

@@ -41,4 +41,6 @@ private:
     void drawLogPolarSlider(const std::vector<Screen*>& selected);
     void drawJuliaSliders(const std::vector<Screen*>& selected);
     void drawDrosteSliders(const std::vector<Screen*>& selected);
+    void drawPowerSlider(const std::vector<Screen*>& selected);
+    void drawKaleidoscopeSliders(const std::vector<Screen*>& selected);
 };
