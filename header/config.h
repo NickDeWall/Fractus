@@ -45,6 +45,11 @@ namespace Config {
     constexpr float INVERSION_DEFAULT_RADIUS = 0.5f;
     constexpr float INVERSION_MIN_RADIUS = 0.02f;
     constexpr float INVERSION_MAX_RADIUS = 2.0f;
+    constexpr float SWIRL_DEFAULT_STRENGTH = 1.0f;
+    constexpr float SWIRL_STRENGTH_LIMIT = 3.0f;
+    constexpr float SWIRL_DEFAULT_RADIUS = 1.0f;
+    constexpr float SWIRL_MIN_RADIUS = 0.05f;
+    constexpr float SWIRL_MAX_RADIUS = 2.0f;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

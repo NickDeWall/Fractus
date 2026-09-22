@@ -14,7 +14,8 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
       drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS),
       power(Config::POWER_DEFAULT),
       kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f),
-      inversionRadius(Config::INVERSION_DEFAULT_RADIUS) {
+      inversionRadius(Config::INVERSION_DEFAULT_RADIUS),
+      swirlStrength(Config::SWIRL_DEFAULT_STRENGTH), swirlRadius(Config::SWIRL_DEFAULT_RADIUS) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -99,6 +100,14 @@ void Screen::setKaleidoscopeAngle(float degrees) {
 
 void Screen::setInversionRadius(float radius) {
     inversionRadius = std::clamp(radius, Config::INVERSION_MIN_RADIUS, Config::INVERSION_MAX_RADIUS);
+}
+
+void Screen::setSwirlStrength(float turns) {
+    swirlStrength = std::clamp(turns, -Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_STRENGTH_LIMIT);
+}
+
+void Screen::setSwirlRadius(float radius) {
+    swirlRadius = std::clamp(radius, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS);
 }
 
 int Screen::getId() const {
@@ -195,6 +204,14 @@ float Screen::getKaleidoscopeAngle() const {
 
 float Screen::getInversionRadius() const {
     return inversionRadius;
+}
+
+float Screen::getSwirlStrength() const {
+    return swirlStrength;
+}
+
+float Screen::getSwirlRadius() const {
+    return swirlRadius;
 }
 
 SDL_Color Screen::getOutlineColor() const {

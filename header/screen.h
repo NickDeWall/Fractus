@@ -11,6 +11,7 @@ enum class DisplayMode {
     Power = 5,
     Kaleidoscope = 6,
     Inversion = 7,
+    Swirl = 8,
     Count
 };
 
@@ -39,6 +40,8 @@ public:
     void setKaleidoscopeSegments(int segments);
     void setKaleidoscopeAngle(float degrees);
     void setInversionRadius(float radius);
+    void setSwirlStrength(float turns);
+    void setSwirlRadius(float radius);
 
     // Getters
     int getId() const;
@@ -64,6 +67,8 @@ public:
     int getKaleidoscopeSegments() const;
     float getKaleidoscopeAngle() const;
     float getInversionRadius() const;
+    float getSwirlStrength() const;
+    float getSwirlRadius() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -111,4 +116,6 @@ private:
     int kaleidoscopeSegments;
     float kaleidoscopeAngle;
     float inversionRadius;
+    float swirlStrength;
+    float swirlRadius;
 };

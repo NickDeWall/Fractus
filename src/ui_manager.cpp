@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope", "Inversion (1/z)" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope", "Inversion (1/z)", "Swirl" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 
@@ -143,6 +143,8 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
             drawKaleidoscopeSliders(selected);
         } else if (selected.front()->getDisplayMode() == DisplayMode::Inversion) {
             drawInversionSlider(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Swirl) {
+            drawSwirlSliders(selected);
         }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
@@ -374,5 +376,26 @@ void UiManager::drawInversionSlider(const std::vector<Screen*>& selected) {
 
     for (Screen* screen : selected) {
         screen->setInversionRadius(radius);
+    }
+}
+
+void UiManager::drawSwirlSliders(const std::vector<Screen*>& selected) {
+    float strength = selected.front()->getSwirlStrength();
+    float radius = selected.front()->getSwirlRadius();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##swirlStrength", &strength, -Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_STRENGTH_LIMIT,
+            "Swirl %.2f turns", ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setSwirlStrength(strength);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##swirlRadius", &radius, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS,
+            "Swirl radius %.2f", ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setSwirlRadius(radius);
+        }
     }
 }

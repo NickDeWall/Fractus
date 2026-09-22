@@ -32,6 +32,7 @@ namespace {
         const int POWER = 5;
         const int KALEIDOSCOPE = 6;
         const int INVERSION = 7;
+        const int SWIRL = 8;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -47,6 +48,8 @@ namespace {
         uniform float segments;
         uniform float wedgeOffset;
         uniform float inversionRadius;
+        uniform float swirlStrength;
+        uniform float swirlRadius;
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -94,6 +97,19 @@ namespace {
                 vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
                 float lengthSquared = max(dot(z, z), 1e-8);
                 vec2 w = z * (inversionRadius * inversionRadius * 0.25) / lengthSquared;
+                uv = vec2(0.5 + w.x / aspect, 0.5 + w.y);
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
+            } else if (mode == SWIRL) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                float extent = max(swirlRadius * 0.5, 1e-6);
+                float falloff = max(1.0 - length(z) / extent, 0.0);
+                float angle = swirlStrength * TAU * falloff * falloff;
+                float sine = sin(angle);
+                float cosine = cos(angle);
+                vec2 w = vec2(z.x * cosine - z.y * sine, z.x * sine + z.y * cosine);
                 uv = vec2(0.5 + w.x / aspect, 0.5 + w.y);
                 if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
                     fragColor = vec4(0.0);
@@ -388,6 +404,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1f(glGetUniformLocation(screenShaderProgram, "segments"), static_cast<float>(screen.getKaleidoscopeSegments()));
             glUniform1f(glGetUniformLocation(screenShaderProgram, "wedgeOffset"), screen.getKaleidoscopeAngle() * static_cast<float>(Config::PI) / 180.0f);
             glUniform1f(glGetUniformLocation(screenShaderProgram, "inversionRadius"), screen.getInversionRadius());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "swirlStrength"), screen.getSwirlStrength());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "swirlRadius"), screen.getSwirlRadius());
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
