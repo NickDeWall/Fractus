@@ -40,4 +40,5 @@ private:
     void drawDisplayModeCombo(const std::vector<Screen*>& selected);
     void drawLogPolarSlider(const std::vector<Screen*>& selected);
     void drawJuliaSliders(const std::vector<Screen*>& selected);
+    void drawDrosteSliders(const std::vector<Screen*>& selected);
 };

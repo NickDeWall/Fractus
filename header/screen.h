@@ -7,6 +7,7 @@ enum class DisplayMode {
     Prop = 1,
     LogPolar = 2,
     Julia = 3,
+    Droste = 4,
     Count
 };
 
@@ -29,6 +30,8 @@ public:
     void setDisplayMode(DisplayMode mode);
     void setLogPolarMinRadius(float radius);
     void setJuliaC(float real, float imag);
+    void setDrosteZoom(float zoom);
+    void setDrosteArms(int arms);
 
     // Getters
     int getId() const;
@@ -48,6 +51,8 @@ public:
     float getLogPolarMinRadius() const;
     float getJuliaReal() const;
     float getJuliaImag() const;
+    float getDrosteZoom() const;
+    int getDrosteArms() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -89,4 +94,6 @@ private:
     float logPolarMinRadius;
     float juliaReal;
     float juliaImag;
+    float drosteZoom;
+    int drosteArms;
 };

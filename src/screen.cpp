@@ -10,7 +10,8 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
       fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal),
       logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS),
-      juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG) {
+      juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG),
+      drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -71,6 +72,14 @@ void Screen::setLogPolarMinRadius(float radius) {
 void Screen::setJuliaC(float real, float imag) {
     juliaReal = std::clamp(real, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
     juliaImag = std::clamp(imag, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
+}
+
+void Screen::setDrosteZoom(float zoom) {
+    drosteZoom = std::clamp(zoom, Config::DROSTE_MIN_ZOOM, Config::DROSTE_MAX_ZOOM);
+}
+
+void Screen::setDrosteArms(int arms) {
+    drosteArms = std::clamp(arms, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT);
 }
 
 int Screen::getId() const {
@@ -143,6 +152,14 @@ float Screen::getJuliaReal() const {
 
 float Screen::getJuliaImag() const {
     return juliaImag;
+}
+
+float Screen::getDrosteZoom() const {
+    return drosteZoom;
+}
+
+int Screen::getDrosteArms() const {
+    return drosteArms;
 }
 
 SDL_Color Screen::getOutlineColor() const {

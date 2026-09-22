@@ -32,6 +32,11 @@ namespace Config {
     constexpr float JULIA_DEFAULT_REAL = -0.8f;
     constexpr float JULIA_DEFAULT_IMAG = 0.156f;
     constexpr float JULIA_C_LIMIT = 2.0f;
+    constexpr float DROSTE_DEFAULT_ZOOM = 3.0f;
+    constexpr float DROSTE_MIN_ZOOM = 1.1f;
+    constexpr float DROSTE_MAX_ZOOM = 100.0f;
+    constexpr int DROSTE_DEFAULT_ARMS = 1;
+    constexpr int DROSTE_ARM_LIMIT = 6;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

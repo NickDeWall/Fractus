@@ -28,6 +28,7 @@ namespace {
         #version 330 core
         const int LOG_POLAR = 2;
         const int JULIA = 3;
+        const int DROSTE = 4;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -37,6 +38,8 @@ namespace {
         uniform float minRadius;
         uniform vec2 juliaC;
         uniform float juliaHeight;
+        uniform float drosteZoom;
+        uniform float drosteArms;
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -55,6 +58,11 @@ namespace {
                     fragColor = vec4(0.0);
                     return;
                 }
+            } else if (mode == DROSTE) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                float turn = fract(atan(z.y, z.x) / TAU);
+                float rings = log(max(length(z), 1e-6)) / log(drosteZoom);
+                uv = vec2(fract(rings + drosteArms * turn), turn);
             }
             fragColor = texture(tex, uv) * color;
         }
@@ -338,6 +346,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1f(glGetUniformLocation(screenShaderProgram, "minRadius"), screen.getLogPolarMinRadius());
             glUniform2f(glGetUniformLocation(screenShaderProgram, "juliaC"), screen.getJuliaReal(), screen.getJuliaImag());
             glUniform1f(glGetUniformLocation(screenShaderProgram, "juliaHeight"), Config::JULIA_VIEW_HEIGHT);
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "drosteZoom"), screen.getDrosteZoom());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "drosteArms"), static_cast<float>(screen.getDrosteArms()));
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

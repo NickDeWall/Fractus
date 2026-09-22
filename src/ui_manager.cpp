@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 
@@ -135,6 +135,8 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
             drawLogPolarSlider(selected);
         } else if (selected.front()->getDisplayMode() == DisplayMode::Julia) {
             drawJuliaSliders(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Droste) {
+            drawDrosteSliders(selected);
         }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
@@ -297,5 +299,26 @@ void UiManager::drawJuliaSliders(const std::vector<Screen*>& selected) {
 
     for (Screen* screen : selected) {
         screen->setJuliaC(real, imag);
+    }
+}
+
+void UiManager::drawDrosteSliders(const std::vector<Screen*>& selected) {
+    float zoom = selected.front()->getDrosteZoom();
+    int arms = selected.front()->getDrosteArms();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##drosteZoom", &zoom, Config::DROSTE_MIN_ZOOM, Config::DROSTE_MAX_ZOOM, "Zoom per ring %.2fx",
+            ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setDrosteZoom(zoom);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderInt("##drosteArms", &arms, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT, "Spiral arms %d",
+            ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setDrosteArms(arms);
+        }
     }
 }
