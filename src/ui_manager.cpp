@@ -10,7 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope", "Inversion (1/z)", "Swirl" };
+    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope", "Inversion (1/z)", "Swirl", "Tile / Mirror" };
     static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
         "Every display mode needs a name");
 
@@ -145,6 +145,8 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
             drawInversionSlider(selected);
         } else if (selected.front()->getDisplayMode() == DisplayMode::Swirl) {
             drawSwirlSliders(selected);
+        } else if (selected.front()->getDisplayMode() == DisplayMode::Tile) {
+            drawTileControls(selected);
         }
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
@@ -396,6 +398,25 @@ void UiManager::drawSwirlSliders(const std::vector<Screen*>& selected) {
             "Swirl radius %.2f", ImGuiSliderFlags_AlwaysClamp)) {
         for (Screen* screen : selected) {
             screen->setSwirlRadius(radius);
+        }
+    }
+}
+
+void UiManager::drawTileControls(const std::vector<Screen*>& selected) {
+    int tiles = selected.front()->getTileCount();
+    bool mirror = selected.front()->getTileMirror();
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderInt("##tileCount", &tiles, Config::TILE_MIN_COUNT, Config::TILE_MAX_COUNT, "Tiles %d",
+            ImGuiSliderFlags_AlwaysClamp)) {
+        for (Screen* screen : selected) {
+            screen->setTileCount(tiles);
+        }
+    }
+
+    if (ImGui::Checkbox("Mirror tiles", &mirror)) {
+        for (Screen* screen : selected) {
+            screen->setTileMirror(mirror);
         }
     }
 }

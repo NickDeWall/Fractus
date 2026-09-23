@@ -50,6 +50,9 @@ namespace Config {
     constexpr float SWIRL_DEFAULT_RADIUS = 1.0f;
     constexpr float SWIRL_MIN_RADIUS = 0.05f;
     constexpr float SWIRL_MAX_RADIUS = 2.0f;
+    constexpr int TILE_DEFAULT_COUNT = 2;
+    constexpr int TILE_MIN_COUNT = 1;
+    constexpr int TILE_MAX_COUNT = 12;
     constexpr int MIN_SCREEN_SIZE = 0;
     constexpr float MAX_SCREEN_RATIO = 0.99f;
     constexpr float ROTATION_SPEED = 140.0f;

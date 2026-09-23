@@ -33,6 +33,7 @@ namespace {
         const int KALEIDOSCOPE = 6;
         const int INVERSION = 7;
         const int SWIRL = 8;
+        const int TILE = 9;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -50,6 +51,8 @@ namespace {
         uniform float inversionRadius;
         uniform float swirlStrength;
         uniform float swirlRadius;
+        uniform float tiles;
+        uniform float tileMirror;
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -115,6 +118,11 @@ namespace {
                     fragColor = vec4(0.0);
                     return;
                 }
+            } else if (mode == TILE) {
+                vec2 scaled = vTexCoord * tiles;
+                vec2 cell = fract(scaled);
+                vec2 flipped = mod(floor(scaled), 2.0) * step(0.5, tileMirror);
+                uv = mix(cell, 1.0 - cell, flipped);
             }
             fragColor = texture(tex, uv) * color;
         }
@@ -406,6 +414,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1f(glGetUniformLocation(screenShaderProgram, "inversionRadius"), screen.getInversionRadius());
             glUniform1f(glGetUniformLocation(screenShaderProgram, "swirlStrength"), screen.getSwirlStrength());
             glUniform1f(glGetUniformLocation(screenShaderProgram, "swirlRadius"), screen.getSwirlRadius());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "tiles"), static_cast<float>(screen.getTileCount()));
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "tileMirror"), screen.getTileMirror() ? 1.0f : 0.0f);
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

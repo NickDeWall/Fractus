@@ -15,7 +15,8 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
       power(Config::POWER_DEFAULT),
       kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f),
       inversionRadius(Config::INVERSION_DEFAULT_RADIUS),
-      swirlStrength(Config::SWIRL_DEFAULT_STRENGTH), swirlRadius(Config::SWIRL_DEFAULT_RADIUS) {
+      swirlStrength(Config::SWIRL_DEFAULT_STRENGTH), swirlRadius(Config::SWIRL_DEFAULT_RADIUS),
+      tileCount(Config::TILE_DEFAULT_COUNT), tileMirror(true) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -108,6 +109,14 @@ void Screen::setSwirlStrength(float turns) {
 
 void Screen::setSwirlRadius(float radius) {
     swirlRadius = std::clamp(radius, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS);
+}
+
+void Screen::setTileCount(int tiles) {
+    tileCount = std::clamp(tiles, Config::TILE_MIN_COUNT, Config::TILE_MAX_COUNT);
+}
+
+void Screen::setTileMirror(bool mirror) {
+    tileMirror = mirror;
 }
 
 int Screen::getId() const {
@@ -212,6 +221,14 @@ float Screen::getSwirlStrength() const {
 
 float Screen::getSwirlRadius() const {
     return swirlRadius;
+}
+
+int Screen::getTileCount() const {
+    return tileCount;
+}
+
+bool Screen::getTileMirror() const {
+    return tileMirror;
 }
 
 SDL_Color Screen::getOutlineColor() const {

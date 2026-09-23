@@ -12,6 +12,7 @@ enum class DisplayMode {
     Kaleidoscope = 6,
     Inversion = 7,
     Swirl = 8,
+    Tile = 9,
     Count
 };
 
@@ -42,6 +43,8 @@ public:
     void setInversionRadius(float radius);
     void setSwirlStrength(float turns);
     void setSwirlRadius(float radius);
+    void setTileCount(int tiles);
+    void setTileMirror(bool mirror);
 
     // Getters
     int getId() const;
@@ -69,6 +72,8 @@ public:
     float getInversionRadius() const;
     float getSwirlStrength() const;
     float getSwirlRadius() const;
+    int getTileCount() const;
+    bool getTileMirror() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -118,4 +123,6 @@ private:
     float inversionRadius;
     float swirlStrength;
     float swirlRadius;
+    int tileCount;
+    bool tileMirror;
 };
