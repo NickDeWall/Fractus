@@ -13,6 +13,13 @@ enum class DisplayMode {
     Inversion = 7,
     Swirl = 8,
     Tile = 9,
+    Sharpen = 10,
+    HueShift = 11,
+    Mobius = 12,
+    Invert = 13,
+    Chromatic = 14,
+    Newton = 15,
+    Shear = 16,
     Count
 };
 
@@ -45,6 +52,17 @@ public:
     void setSwirlRadius(float radius);
     void setTileCount(int tiles);
     void setTileMirror(bool mirror);
+    void setSharpenStrength(float strength);
+    void setHueShift(float turns);
+    void setMobiusB(float real, float imag);
+    void setMobiusC(float real, float imag);
+    void setInvertAmount(float amount);
+    void setInvertContrast(float contrast);
+    void setInvertHue(bool hueFlip);
+    void setChromaticSplit(float split);
+    void setNewtonOrder(int order);
+    void setNewtonStep(float step);
+    void setShear(float x, float y);
 
     // Getters
     int getId() const;
@@ -74,6 +92,20 @@ public:
     float getSwirlRadius() const;
     int getTileCount() const;
     bool getTileMirror() const;
+    float getSharpenStrength() const;
+    float getHueShift() const;
+    float getMobiusBReal() const;
+    float getMobiusBImag() const;
+    float getMobiusCReal() const;
+    float getMobiusCImag() const;
+    float getInvertAmount() const;
+    float getInvertContrast() const;
+    bool getInvertHue() const;
+    float getChromaticSplit() const;
+    int getNewtonOrder() const;
+    float getNewtonStep() const;
+    float getShearX() const;
+    float getShearY() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -125,4 +157,18 @@ private:
     float swirlRadius;
     int tileCount;
     bool tileMirror;
+    float sharpenStrength;
+    float hueShift;
+    float mobiusBReal;
+    float mobiusBImag;
+    float mobiusCReal;
+    float mobiusCImag;
+    float invertAmount;
+    float invertContrast;
+    bool invertHue;
+    float chromaticSplit;
+    int newtonOrder;
+    float newtonStep;
+    float shearX;
+    float shearY;
 };

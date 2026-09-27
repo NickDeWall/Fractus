@@ -16,7 +16,14 @@ Screen::Screen(int id, float x, float y, int width, int height, float rotation, 
       kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f),
       inversionRadius(Config::INVERSION_DEFAULT_RADIUS),
       swirlStrength(Config::SWIRL_DEFAULT_STRENGTH), swirlRadius(Config::SWIRL_DEFAULT_RADIUS),
-      tileCount(Config::TILE_DEFAULT_COUNT), tileMirror(true) {
+      tileCount(Config::TILE_DEFAULT_COUNT), tileMirror(true),
+      sharpenStrength(Config::SHARPEN_DEFAULT_STRENGTH), hueShift(Config::HUE_SHIFT_DEFAULT),
+      mobiusBReal(Config::MOBIUS_DEFAULT_B_REAL), mobiusBImag(Config::MOBIUS_DEFAULT_B_IMAG),
+      mobiusCReal(Config::MOBIUS_DEFAULT_C_REAL), mobiusCImag(Config::MOBIUS_DEFAULT_C_IMAG),
+      invertAmount(Config::INVERT_DEFAULT_AMOUNT), invertContrast(Config::INVERT_DEFAULT_CONTRAST), invertHue(true),
+      chromaticSplit(Config::CHROMATIC_DEFAULT_SPLIT),
+      newtonOrder(Config::NEWTON_DEFAULT_ORDER), newtonStep(Config::NEWTON_DEFAULT_STEP),
+      shearX(0.2f), shearY(0.0f) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -117,6 +124,53 @@ void Screen::setTileCount(int tiles) {
 
 void Screen::setTileMirror(bool mirror) {
     tileMirror = mirror;
+}
+
+void Screen::setSharpenStrength(float strength) {
+    sharpenStrength = std::clamp(strength, 0.0f, Config::SHARPEN_STRENGTH_LIMIT);
+}
+
+void Screen::setHueShift(float turns) {
+    hueShift = std::clamp(turns, -Config::HUE_SHIFT_LIMIT, Config::HUE_SHIFT_LIMIT);
+}
+
+void Screen::setMobiusB(float real, float imag) {
+    mobiusBReal = std::clamp(real, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT);
+    mobiusBImag = std::clamp(imag, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT);
+}
+
+void Screen::setInvertAmount(float amount) {
+    invertAmount = std::clamp(amount, 0.0f, 1.0f);
+}
+
+void Screen::setInvertContrast(float contrast) {
+    invertContrast = std::clamp(contrast, Config::INVERT_MIN_CONTRAST, Config::INVERT_MAX_CONTRAST);
+}
+
+void Screen::setInvertHue(bool hueFlip) {
+    invertHue = hueFlip;
+}
+
+void Screen::setChromaticSplit(float split) {
+    chromaticSplit = std::clamp(split, -Config::CHROMATIC_SPLIT_LIMIT, Config::CHROMATIC_SPLIT_LIMIT);
+}
+
+void Screen::setNewtonOrder(int order) {
+    newtonOrder = std::clamp(order, Config::NEWTON_MIN_ORDER, Config::NEWTON_MAX_ORDER);
+}
+
+void Screen::setNewtonStep(float step) {
+    newtonStep = std::clamp(step, Config::NEWTON_MIN_STEP, Config::NEWTON_MAX_STEP);
+}
+
+void Screen::setShear(float x, float y) {
+    shearX = std::clamp(x, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT);
+    shearY = std::clamp(y, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT);
+}
+
+void Screen::setMobiusC(float real, float imag) {
+    mobiusCReal = std::clamp(real, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT);
+    mobiusCImag = std::clamp(imag, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT);
 }
 
 int Screen::getId() const {
@@ -229,6 +283,62 @@ int Screen::getTileCount() const {
 
 bool Screen::getTileMirror() const {
     return tileMirror;
+}
+
+float Screen::getSharpenStrength() const {
+    return sharpenStrength;
+}
+
+float Screen::getHueShift() const {
+    return hueShift;
+}
+
+float Screen::getMobiusBReal() const {
+    return mobiusBReal;
+}
+
+float Screen::getMobiusBImag() const {
+    return mobiusBImag;
+}
+
+float Screen::getMobiusCReal() const {
+    return mobiusCReal;
+}
+
+float Screen::getMobiusCImag() const {
+    return mobiusCImag;
+}
+
+float Screen::getInvertAmount() const {
+    return invertAmount;
+}
+
+float Screen::getInvertContrast() const {
+    return invertContrast;
+}
+
+bool Screen::getInvertHue() const {
+    return invertHue;
+}
+
+float Screen::getChromaticSplit() const {
+    return chromaticSplit;
+}
+
+int Screen::getNewtonOrder() const {
+    return newtonOrder;
+}
+
+float Screen::getNewtonStep() const {
+    return newtonStep;
+}
+
+float Screen::getShearX() const {
+    return shearX;
+}
+
+float Screen::getShearY() const {
+    return shearY;
 }
 
 SDL_Color Screen::getOutlineColor() const {

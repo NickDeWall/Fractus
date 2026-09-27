@@ -34,6 +34,13 @@ namespace {
         const int INVERSION = 7;
         const int SWIRL = 8;
         const int TILE = 9;
+        const int SHARPEN = 10;
+        const int HUE_SHIFT = 11;
+        const int MOBIUS = 12;
+        const int INVERT = 13;
+        const int CHROMATIC = 14;
+        const int NEWTON = 15;
+        const int SHEAR = 16;
         const float TAU = 6.28318530718;
         in vec2 vTexCoord;
         uniform sampler2D tex;
@@ -53,6 +60,38 @@ namespace {
         uniform float swirlRadius;
         uniform float tiles;
         uniform float tileMirror;
+        uniform float sharpenStrength;
+        uniform float hueShift;
+        uniform vec2 mobiusB;
+        uniform vec2 mobiusC;
+        uniform float invertAmount;
+        uniform float invertContrast;
+        uniform float invertHue;
+        uniform float chromaticSplit;
+        uniform float newtonOrder;
+        uniform float newtonStep;
+        uniform float newtonHeight;
+        uniform vec2 shear;
+
+        vec3 rgbToHsv(vec3 rgb) {
+            float maxComponent = max(rgb.r, max(rgb.g, rgb.b));
+            float minComponent = min(rgb.r, min(rgb.g, rgb.b));
+            float span = maxComponent - minComponent;
+            float hue = 0.0;
+            if (span > 0.0) {
+                if (maxComponent == rgb.r) hue = mod((rgb.g - rgb.b) / span, 6.0);
+                else if (maxComponent == rgb.g) hue = (rgb.b - rgb.r) / span + 2.0;
+                else hue = (rgb.r - rgb.g) / span + 4.0;
+                hue /= 6.0;
+            }
+            float saturation = maxComponent > 0.0 ? span / maxComponent : 0.0;
+            return vec3(hue, saturation, maxComponent);
+        }
+
+        vec3 hsvToRgb(vec3 hsv) {
+            vec3 k = mod(vec3(5.0, 3.0, 1.0) + hsv.x * 6.0, 6.0);
+            return hsv.z * (1.0 - hsv.y * clamp(min(k, 4.0 - k), 0.0, 1.0));
+        }
         out vec4 fragColor;
         void main() {
             vec2 uv = vTexCoord;
@@ -113,6 +152,78 @@ namespace {
                 float sine = sin(angle);
                 float cosine = cos(angle);
                 vec2 w = vec2(z.x * cosine - z.y * sine, z.x * sine + z.y * cosine);
+                uv = vec2(0.5 + w.x / aspect, 0.5 + w.y);
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
+            } else if (mode == SHARPEN) {
+                vec2 texel = 1.0 / vec2(textureSize(tex, 0));
+                vec4 middle = texture(tex, uv);
+                vec4 neighbours = texture(tex, uv + vec2(texel.x, 0.0)) + texture(tex, uv - vec2(texel.x, 0.0))
+                    + texture(tex, uv + vec2(0.0, texel.y)) + texture(tex, uv - vec2(0.0, texel.y));
+                vec4 sharpened = middle + sharpenStrength * (middle * 4.0 - neighbours) * 0.25;
+                fragColor = max(sharpened, vec4(0.0)) * color;
+                return;
+            } else if (mode == HUE_SHIFT) {
+                vec4 source = texture(tex, uv);
+                vec3 hsv = rgbToHsv(source.rgb);
+                hsv.x = fract(hsv.x + hueShift);
+                fragColor = vec4(hsvToRgb(hsv), source.a) * color;
+                return;
+            } else if (mode == MOBIUS) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                vec2 numerator = z + mobiusB;
+                vec2 denominator = vec2(mobiusC.x * z.x - mobiusC.y * z.y, mobiusC.x * z.y + mobiusC.y * z.x) + vec2(1.0, 0.0);
+                float lengthSquared = max(dot(denominator, denominator), 1e-8);
+                vec2 w = vec2(dot(numerator, denominator), numerator.y * denominator.x - numerator.x * denominator.y) / lengthSquared;
+                uv = vec2(0.5 + w.x / aspect, 0.5 + w.y);
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
+            } else if (mode == INVERT) {
+                vec4 source = texture(tex, uv);
+                vec3 straight = source.a > 0.0 ? source.rgb / source.a : source.rgb;
+                vec3 flipped;
+                if (invertHue > 0.5) {
+                    vec3 hsv = rgbToHsv(straight);
+                    hsv.x = fract(hsv.x + 0.5 * invertAmount);
+                    flipped = hsvToRgb(hsv);
+                } else {
+                    flipped = mix(straight, vec3(1.0) - straight, invertAmount);
+                }
+                flipped = clamp((flipped - 0.5) * invertContrast + 0.5, 0.0, 1.0);
+                fragColor = vec4(flipped * source.a, source.a) * color;
+                return;
+            } else if (mode == CHROMATIC) {
+                vec2 offset = vTexCoord - 0.5;
+                vec4 source = texture(tex, uv);
+                float red = texture(tex, 0.5 + offset * (1.0 - chromaticSplit)).r;
+                float blue = texture(tex, 0.5 + offset * (1.0 + chromaticSplit)).b;
+                fragColor = vec4(red, source.g, blue, source.a) * color;
+                return;
+            } else if (mode == NEWTON) {
+                vec2 span = vec2(aspect, 1.0) * newtonHeight;
+                vec2 z = (vTexCoord - 0.5) * span;
+                float radius = max(length(z), 1e-6);
+                float angle = atan(z.y, z.x);
+                float powerRadius = pow(radius, newtonOrder);
+                vec2 zPower = powerRadius * vec2(cos(newtonOrder * angle), sin(newtonOrder * angle)) - vec2(1.0, 0.0);
+                float derivativeRadius = newtonOrder * pow(radius, newtonOrder - 1.0);
+                float derivativeAngle = (newtonOrder - 1.0) * angle;
+                vec2 derivative = derivativeRadius * vec2(cos(derivativeAngle), sin(derivativeAngle));
+                float lengthSquared = max(dot(derivative, derivative), 1e-8);
+                vec2 quotient = vec2(dot(zPower, derivative), zPower.y * derivative.x - zPower.x * derivative.y) / lengthSquared;
+                vec2 w = z - newtonStep * quotient;
+                uv = w / span + 0.5;
+                if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+                    fragColor = vec4(0.0);
+                    return;
+                }
+            } else if (mode == SHEAR) {
+                vec2 z = (vTexCoord - 0.5) * vec2(aspect, 1.0);
+                vec2 w = vec2(z.x + shear.x * z.y, z.y + shear.y * z.x);
                 uv = vec2(0.5 + w.x / aspect, 0.5 + w.y);
                 if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
                     fragColor = vec4(0.0);
@@ -416,6 +527,18 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
             glUniform1f(glGetUniformLocation(screenShaderProgram, "swirlRadius"), screen.getSwirlRadius());
             glUniform1f(glGetUniformLocation(screenShaderProgram, "tiles"), static_cast<float>(screen.getTileCount()));
             glUniform1f(glGetUniformLocation(screenShaderProgram, "tileMirror"), screen.getTileMirror() ? 1.0f : 0.0f);
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "sharpenStrength"), screen.getSharpenStrength());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "hueShift"), screen.getHueShift());
+            glUniform2f(glGetUniformLocation(screenShaderProgram, "mobiusB"), screen.getMobiusBReal(), screen.getMobiusBImag());
+            glUniform2f(glGetUniformLocation(screenShaderProgram, "mobiusC"), screen.getMobiusCReal(), screen.getMobiusCImag());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "invertAmount"), screen.getInvertAmount());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "invertContrast"), screen.getInvertContrast());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "invertHue"), screen.getInvertHue() ? 1.0f : 0.0f);
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "chromaticSplit"), screen.getChromaticSplit());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "newtonOrder"), static_cast<float>(screen.getNewtonOrder()));
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "newtonStep"), screen.getNewtonStep());
+            glUniform1f(glGetUniformLocation(screenShaderProgram, "newtonHeight"), Config::NEWTON_VIEW_HEIGHT);
+            glUniform2f(glGetUniformLocation(screenShaderProgram, "shear"), screen.getShearX(), screen.getShearY());
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

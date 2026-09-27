@@ -46,4 +46,11 @@ private:
     void drawInversionSlider(const std::vector<Screen*>& selected);
     void drawSwirlSliders(const std::vector<Screen*>& selected);
     void drawTileControls(const std::vector<Screen*>& selected);
+    void drawSharpenSlider(const std::vector<Screen*>& selected);
+    void drawHueShiftSlider(const std::vector<Screen*>& selected);
+    void drawMobiusSliders(const std::vector<Screen*>& selected);
+    void drawInvertSlider(const std::vector<Screen*>& selected);
+    void drawChromaticSlider(const std::vector<Screen*>& selected);
+    void drawNewtonSliders(const std::vector<Screen*>& selected);
+    void drawShearSliders(const std::vector<Screen*>& selected);
 };
