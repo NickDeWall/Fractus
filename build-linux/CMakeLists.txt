@@ -28,6 +28,7 @@ add_executable(fractus
     ${ROOT}/src/screen_manager.cpp
     ${ROOT}/src/shader_manager.cpp
     ${ROOT}/src/ui_manager.cpp
+    ${ROOT}/src/display_modes.cpp
     ${IMGUI}/imgui.cpp
     ${IMGUI}/imgui_draw.cpp
     ${IMGUI}/imgui_tables.cpp

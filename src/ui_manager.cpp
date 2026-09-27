@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "screen_manager.h"
 #include "config.h"
+#include "display_modes.h"
 #include <cmath>
 #include <string>
 
@@ -10,10 +11,6 @@
 #include "imgui_impl_opengl3.h"
 
 namespace {
-    const char* const DISPLAY_MODE_NAMES[] = { "Normal", "Prop", "Log-Polar", "Julia (z\xC2\xB2 + c)", "Droste", "Power (z\xE2\x81\xBF)", "Kaleidoscope", "Inversion (1/z)", "Swirl", "Tile / Mirror", "Sharpen", "Hue shift", "M\xC3\xB6" "bius", "Invert", "Chromatic split", "Newton (z\xE2\x81\xBF - 1)", "Shear" };
-    static_assert(sizeof(DISPLAY_MODE_NAMES) / sizeof(DISPLAY_MODE_NAMES[0]) == static_cast<size_t>(DisplayMode::Count),
-        "Every display mode needs a name");
-
     float wrapDegrees(float degrees) {
         return degrees - 360.0f * std::floor(degrees / 360.0f);
     }
@@ -131,37 +128,7 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         ImGui::Separator();
 
         drawDisplayModeCombo(selected);
-        if (selected.front()->getDisplayMode() == DisplayMode::LogPolar) {
-            drawLogPolarSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Julia) {
-            drawJuliaSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Droste) {
-            drawDrosteSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Power) {
-            drawPowerSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Kaleidoscope) {
-            drawKaleidoscopeSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Inversion) {
-            drawInversionSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Swirl) {
-            drawSwirlSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Tile) {
-            drawTileControls(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Sharpen) {
-            drawSharpenSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::HueShift) {
-            drawHueShiftSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Mobius) {
-            drawMobiusSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Invert) {
-            drawInvertSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Chromatic) {
-            drawChromaticSlider(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Newton) {
-            drawNewtonSliders(selected);
-        } else if (selected.front()->getDisplayMode() == DisplayMode::Shear) {
-            drawShearSliders(selected);
-        }
+        drawModeParams(selected);
         ImGui::Spacing();
         drawSizeSlider(screenManager, selected);
         ImGui::Spacing();
@@ -279,15 +246,14 @@ void UiManager::drawDelaySlider(const std::vector<Screen*>& selected) {
 }
 
 void UiManager::drawDisplayModeCombo(const std::vector<Screen*>& selected) {
-    const DisplayMode current = selected.front()->getDisplayMode();
-    const std::string preview = std::string("Display: ") + DISPLAY_MODE_NAMES[static_cast<int>(current)];
+    const int current = selected.front()->getDisplayMode();
+    const std::string preview = std::string("Display: ") + DisplayModes::get(current).name;
 
     ImGui::SetNextItemWidth(-FLT_MIN);
     if (!ImGui::BeginCombo("##displayMode", preview.c_str())) return;
 
-    for (int i = 0; i < static_cast<int>(DisplayMode::Count); ++i) {
-        const DisplayMode mode = static_cast<DisplayMode>(i);
-        if (ImGui::Selectable(DISPLAY_MODE_NAMES[i], mode == current)) {
+    for (int mode = 0; mode < DisplayModes::count(); ++mode) {
+        if (ImGui::Selectable(DisplayModes::get(mode).name, mode == current)) {
             for (Screen* screen : selected) {
                 screen->setDisplayMode(mode);
             }
@@ -296,269 +262,36 @@ void UiManager::drawDisplayModeCombo(const std::vector<Screen*>& selected) {
     ImGui::EndCombo();
 }
 
-void UiManager::drawLogPolarSlider(const std::vector<Screen*>& selected) {
-    float radius = selected.front()->getLogPolarMinRadius();
+void UiManager::drawModeParams(const std::vector<Screen*>& selected) {
+    const int mode = selected.front()->getDisplayMode();
+    const ModeInfo& info = DisplayModes::get(mode);
 
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##logPolarMinRadius", &radius, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH,
-            "Min radius %.4f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
+    for (int index = 0; index < static_cast<int>(info.params.size()); ++index) {
+        const ModeParam& slot = info.params[index];
+        const std::string id = "##mode" + std::to_string(mode) + "param" + std::to_string(index);
+        float value = selected.front()->getModeParam(mode, index);
+        bool changed = false;
 
-    for (Screen* screen : selected) {
-        screen->setLogPolarMinRadius(radius);
-    }
-}
-
-void UiManager::drawJuliaSliders(const std::vector<Screen*>& selected) {
-    float real = selected.front()->getJuliaReal();
-    float imag = selected.front()->getJuliaImag();
-    const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    bool changed = ImGui::SliderFloat("##juliaReal", &real, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, "c real %.4f", flags);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    changed |= ImGui::SliderFloat("##juliaImag", &imag, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, "c imag %.4f", flags);
-    if (!changed) return;
-
-    for (Screen* screen : selected) {
-        screen->setJuliaC(real, imag);
-    }
-}
-
-void UiManager::drawDrosteSliders(const std::vector<Screen*>& selected) {
-    float zoom = selected.front()->getDrosteZoom();
-    int arms = selected.front()->getDrosteArms();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##drosteZoom", &zoom, Config::DROSTE_MIN_ZOOM, Config::DROSTE_MAX_ZOOM, "Zoom per ring %.2fx",
-            ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setDrosteZoom(zoom);
+        if (slot.kind == ParamKind::Boolean) {
+            bool ticked = value > 0.5f;
+            changed = ImGui::Checkbox((slot.label + id).c_str(), &ticked);
+            value = ticked ? 1.0f : 0.0f;
+        } else if (slot.kind == ParamKind::Integer) {
+            int whole = static_cast<int>(value);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            changed = ImGui::SliderInt(id.c_str(), &whole, static_cast<int>(slot.minimum), static_cast<int>(slot.maximum),
+                slot.label, ImGuiSliderFlags_AlwaysClamp);
+            value = static_cast<float>(whole);
+        } else {
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp |
+                (slot.logarithmic ? ImGuiSliderFlags_Logarithmic : 0);
+            changed = ImGui::SliderFloat(id.c_str(), &value, slot.minimum, slot.maximum, slot.label, flags);
         }
-    }
 
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderInt("##drosteArms", &arms, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT, "Spiral arms %d",
-            ImGuiSliderFlags_AlwaysClamp)) {
+        if (!changed) continue;
         for (Screen* screen : selected) {
-            screen->setDrosteArms(arms);
+            screen->setModeParam(mode, index, value);
         }
-    }
-}
-
-void UiManager::drawPowerSlider(const std::vector<Screen*>& selected) {
-    float power = selected.front()->getPower();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##power", &power, -Config::POWER_LIMIT, Config::POWER_LIMIT, "Power %.2f",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
-
-    for (Screen* screen : selected) {
-        screen->setPower(power);
-    }
-}
-
-void UiManager::drawKaleidoscopeSliders(const std::vector<Screen*>& selected) {
-    int segments = selected.front()->getKaleidoscopeSegments();
-    float angle = selected.front()->getKaleidoscopeAngle();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderInt("##kaleidoscopeSegments", &segments, Config::KALEIDOSCOPE_MIN_SEGMENTS, Config::KALEIDOSCOPE_MAX_SEGMENTS,
-            "Segments %d", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setKaleidoscopeSegments(segments);
-        }
-    }
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##kaleidoscopeAngle", &angle, 0.0f, 360.0f, "Wedge angle %.1f\xC2\xB0", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setKaleidoscopeAngle(angle);
-        }
-    }
-}
-
-void UiManager::drawInversionSlider(const std::vector<Screen*>& selected) {
-    float radius = selected.front()->getInversionRadius();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##inversionRadius", &radius, Config::INVERSION_MIN_RADIUS, Config::INVERSION_MAX_RADIUS,
-            "Circle radius %.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
-
-    for (Screen* screen : selected) {
-        screen->setInversionRadius(radius);
-    }
-}
-
-void UiManager::drawSwirlSliders(const std::vector<Screen*>& selected) {
-    float strength = selected.front()->getSwirlStrength();
-    float radius = selected.front()->getSwirlRadius();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##swirlStrength", &strength, -Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_STRENGTH_LIMIT,
-            "Swirl %.2f turns", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setSwirlStrength(strength);
-        }
-    }
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##swirlRadius", &radius, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS,
-            "Swirl radius %.2f", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setSwirlRadius(radius);
-        }
-    }
-}
-
-void UiManager::drawTileControls(const std::vector<Screen*>& selected) {
-    int tiles = selected.front()->getTileCount();
-    bool mirror = selected.front()->getTileMirror();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderInt("##tileCount", &tiles, Config::TILE_MIN_COUNT, Config::TILE_MAX_COUNT, "Tiles %d",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setTileCount(tiles);
-        }
-    }
-
-    if (ImGui::Checkbox("Mirror tiles", &mirror)) {
-        for (Screen* screen : selected) {
-            screen->setTileMirror(mirror);
-        }
-    }
-}
-
-void UiManager::drawSharpenSlider(const std::vector<Screen*>& selected) {
-    float strength = selected.front()->getSharpenStrength();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##sharpen", &strength, 0.0f, Config::SHARPEN_STRENGTH_LIMIT, "Sharpen %.2f",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
-
-    for (Screen* screen : selected) {
-        screen->setSharpenStrength(strength);
-    }
-}
-
-void UiManager::drawHueShiftSlider(const std::vector<Screen*>& selected) {
-    float turns = selected.front()->getHueShift();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##hueShift", &turns, -Config::HUE_SHIFT_LIMIT, Config::HUE_SHIFT_LIMIT, "Hue %.3f turns",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
-
-    for (Screen* screen : selected) {
-        screen->setHueShift(turns);
-    }
-}
-
-void UiManager::drawMobiusSliders(const std::vector<Screen*>& selected) {
-    float bReal = selected.front()->getMobiusBReal();
-    float bImag = selected.front()->getMobiusBImag();
-    float cReal = selected.front()->getMobiusCReal();
-    float cImag = selected.front()->getMobiusCImag();
-    const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    bool movedB = ImGui::SliderFloat("##mobiusBReal", &bReal, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT, "shift real %.3f", flags);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    movedB |= ImGui::SliderFloat("##mobiusBImag", &bImag, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT, "shift imag %.3f", flags);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    bool movedC = ImGui::SliderFloat("##mobiusCReal", &cReal, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT, "bend real %.3f", flags);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    movedC |= ImGui::SliderFloat("##mobiusCImag", &cImag, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT, "bend imag %.3f", flags);
-
-    for (Screen* screen : selected) {
-        if (movedB) screen->setMobiusB(bReal, bImag);
-        if (movedC) screen->setMobiusC(cReal, cImag);
-    }
-}
-
-void UiManager::drawInvertSlider(const std::vector<Screen*>& selected) {
-    float amount = selected.front()->getInvertAmount();
-    float contrast = selected.front()->getInvertContrast();
-    bool hueFlip = selected.front()->getInvertHue();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##invert", &amount, 0.0f, 1.0f, "Invert %.2f", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setInvertAmount(amount);
-        }
-    }
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##invertContrast", &contrast, Config::INVERT_MIN_CONTRAST, Config::INVERT_MAX_CONTRAST,
-            "Contrast %.2f", ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setInvertContrast(contrast);
-        }
-    }
-
-    if (ImGui::Checkbox("Hue flip", &hueFlip)) {
-        for (Screen* screen : selected) {
-            screen->setInvertHue(hueFlip);
-        }
-    }
-}
-
-void UiManager::drawChromaticSlider(const std::vector<Screen*>& selected) {
-    float split = selected.front()->getChromaticSplit();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::SliderFloat("##chromatic", &split, -Config::CHROMATIC_SPLIT_LIMIT, Config::CHROMATIC_SPLIT_LIMIT,
-            "Split %.4f", ImGuiSliderFlags_AlwaysClamp)) {
-        return;
-    }
-
-    for (Screen* screen : selected) {
-        screen->setChromaticSplit(split);
-    }
-}
-
-void UiManager::drawNewtonSliders(const std::vector<Screen*>& selected) {
-    int order = selected.front()->getNewtonOrder();
-    float step = selected.front()->getNewtonStep();
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderInt("##newtonOrder", &order, Config::NEWTON_MIN_ORDER, Config::NEWTON_MAX_ORDER, "Roots %d",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setNewtonOrder(order);
-        }
-    }
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::SliderFloat("##newtonStep", &step, Config::NEWTON_MIN_STEP, Config::NEWTON_MAX_STEP, "Step %.2f",
-            ImGuiSliderFlags_AlwaysClamp)) {
-        for (Screen* screen : selected) {
-            screen->setNewtonStep(step);
-        }
-    }
-}
-
-void UiManager::drawShearSliders(const std::vector<Screen*>& selected) {
-    float x = selected.front()->getShearX();
-    float y = selected.front()->getShearY();
-    const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
-
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    bool changed = ImGui::SliderFloat("##shearX", &x, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, "Shear X %.3f", flags);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    changed |= ImGui::SliderFloat("##shearY", &y, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, "Shear Y %.3f", flags);
-    if (!changed) return;
-
-    for (Screen* screen : selected) {
-        screen->setShear(x, y);
     }
 }

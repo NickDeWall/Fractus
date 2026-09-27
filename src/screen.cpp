@@ -8,22 +8,15 @@
 
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
-      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(DisplayMode::Normal),
-      logPolarMinRadius(Config::LOG_POLAR_MIN_RADIUS),
-      juliaReal(Config::JULIA_DEFAULT_REAL), juliaImag(Config::JULIA_DEFAULT_IMAG),
-      drosteZoom(Config::DROSTE_DEFAULT_ZOOM), drosteArms(Config::DROSTE_DEFAULT_ARMS),
-      power(Config::POWER_DEFAULT),
-      kaleidoscopeSegments(Config::KALEIDOSCOPE_DEFAULT_SEGMENTS), kaleidoscopeAngle(0.0f),
-      inversionRadius(Config::INVERSION_DEFAULT_RADIUS),
-      swirlStrength(Config::SWIRL_DEFAULT_STRENGTH), swirlRadius(Config::SWIRL_DEFAULT_RADIUS),
-      tileCount(Config::TILE_DEFAULT_COUNT), tileMirror(true),
-      sharpenStrength(Config::SHARPEN_DEFAULT_STRENGTH), hueShift(Config::HUE_SHIFT_DEFAULT),
-      mobiusBReal(Config::MOBIUS_DEFAULT_B_REAL), mobiusBImag(Config::MOBIUS_DEFAULT_B_IMAG),
-      mobiusCReal(Config::MOBIUS_DEFAULT_C_REAL), mobiusCImag(Config::MOBIUS_DEFAULT_C_IMAG),
-      invertAmount(Config::INVERT_DEFAULT_AMOUNT), invertContrast(Config::INVERT_DEFAULT_CONTRAST), invertHue(true),
-      chromaticSplit(Config::CHROMATIC_DEFAULT_SPLIT),
-      newtonOrder(Config::NEWTON_DEFAULT_ORDER), newtonStep(Config::NEWTON_DEFAULT_STEP),
-      shearX(0.2f), shearY(0.0f) {
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(0) {
+    modeParams.assign(DisplayModes::count() * DisplayModes::MAX_PARAMS, 0.0f);
+    for (int mode = 0; mode < DisplayModes::count(); ++mode) {
+        const ModeInfo& info = DisplayModes::get(mode);
+        for (int param = 0; param < static_cast<int>(info.params.size()); ++param) {
+            modeParams[mode * DisplayModes::MAX_PARAMS + param] = info.params[param].defaultValue;
+        }
+    }
+
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -73,104 +66,13 @@ void Screen::setDelay(float seconds) {
     delay = std::clamp(seconds, 0.0f, Config::MAX_DELAY);
 }
 
-void Screen::setDisplayMode(DisplayMode mode) {
-    displayMode = mode;
+void Screen::setDisplayMode(int mode) {
+    displayMode = std::clamp(mode, 0, DisplayModes::count() - 1);
 }
 
-void Screen::setLogPolarMinRadius(float radius) {
-    logPolarMinRadius = std::clamp(radius, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH);
-}
-
-void Screen::setJuliaC(float real, float imag) {
-    juliaReal = std::clamp(real, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
-    juliaImag = std::clamp(imag, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT);
-}
-
-void Screen::setDrosteZoom(float zoom) {
-    drosteZoom = std::clamp(zoom, Config::DROSTE_MIN_ZOOM, Config::DROSTE_MAX_ZOOM);
-}
-
-void Screen::setDrosteArms(int arms) {
-    drosteArms = std::clamp(arms, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT);
-}
-
-void Screen::setPower(float value) {
-    power = std::clamp(value, -Config::POWER_LIMIT, Config::POWER_LIMIT);
-}
-
-void Screen::setKaleidoscopeSegments(int segments) {
-    kaleidoscopeSegments = std::clamp(segments, Config::KALEIDOSCOPE_MIN_SEGMENTS, Config::KALEIDOSCOPE_MAX_SEGMENTS);
-}
-
-void Screen::setKaleidoscopeAngle(float degrees) {
-    kaleidoscopeAngle = degrees - 360.0f * std::floor(degrees / 360.0f);
-}
-
-void Screen::setInversionRadius(float radius) {
-    inversionRadius = std::clamp(radius, Config::INVERSION_MIN_RADIUS, Config::INVERSION_MAX_RADIUS);
-}
-
-void Screen::setSwirlStrength(float turns) {
-    swirlStrength = std::clamp(turns, -Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_STRENGTH_LIMIT);
-}
-
-void Screen::setSwirlRadius(float radius) {
-    swirlRadius = std::clamp(radius, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS);
-}
-
-void Screen::setTileCount(int tiles) {
-    tileCount = std::clamp(tiles, Config::TILE_MIN_COUNT, Config::TILE_MAX_COUNT);
-}
-
-void Screen::setTileMirror(bool mirror) {
-    tileMirror = mirror;
-}
-
-void Screen::setSharpenStrength(float strength) {
-    sharpenStrength = std::clamp(strength, 0.0f, Config::SHARPEN_STRENGTH_LIMIT);
-}
-
-void Screen::setHueShift(float turns) {
-    hueShift = std::clamp(turns, -Config::HUE_SHIFT_LIMIT, Config::HUE_SHIFT_LIMIT);
-}
-
-void Screen::setMobiusB(float real, float imag) {
-    mobiusBReal = std::clamp(real, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT);
-    mobiusBImag = std::clamp(imag, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT);
-}
-
-void Screen::setInvertAmount(float amount) {
-    invertAmount = std::clamp(amount, 0.0f, 1.0f);
-}
-
-void Screen::setInvertContrast(float contrast) {
-    invertContrast = std::clamp(contrast, Config::INVERT_MIN_CONTRAST, Config::INVERT_MAX_CONTRAST);
-}
-
-void Screen::setInvertHue(bool hueFlip) {
-    invertHue = hueFlip;
-}
-
-void Screen::setChromaticSplit(float split) {
-    chromaticSplit = std::clamp(split, -Config::CHROMATIC_SPLIT_LIMIT, Config::CHROMATIC_SPLIT_LIMIT);
-}
-
-void Screen::setNewtonOrder(int order) {
-    newtonOrder = std::clamp(order, Config::NEWTON_MIN_ORDER, Config::NEWTON_MAX_ORDER);
-}
-
-void Screen::setNewtonStep(float step) {
-    newtonStep = std::clamp(step, Config::NEWTON_MIN_STEP, Config::NEWTON_MAX_STEP);
-}
-
-void Screen::setShear(float x, float y) {
-    shearX = std::clamp(x, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT);
-    shearY = std::clamp(y, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT);
-}
-
-void Screen::setMobiusC(float real, float imag) {
-    mobiusCReal = std::clamp(real, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT);
-    mobiusCImag = std::clamp(imag, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT);
+void Screen::setModeParam(int mode, int param, float value) {
+    if (mode < 0 || mode >= DisplayModes::count() || param < 0 || param >= DisplayModes::MAX_PARAMS) return;
+    modeParams[mode * DisplayModes::MAX_PARAMS + param] = DisplayModes::clampParam(mode, param, value);
 }
 
 int Screen::getId() const {
@@ -229,116 +131,17 @@ float Screen::getDelay() const {
     return delay;
 }
 
-DisplayMode Screen::getDisplayMode() const {
+int Screen::getDisplayMode() const {
     return displayMode;
 }
 
-float Screen::getLogPolarMinRadius() const {
-    return logPolarMinRadius;
+float Screen::getModeParam(int mode, int param) const {
+    if (mode < 0 || mode >= DisplayModes::count() || param < 0 || param >= DisplayModes::MAX_PARAMS) return 0.0f;
+    return modeParams[mode * DisplayModes::MAX_PARAMS + param];
 }
 
-float Screen::getJuliaReal() const {
-    return juliaReal;
-}
-
-float Screen::getJuliaImag() const {
-    return juliaImag;
-}
-
-float Screen::getDrosteZoom() const {
-    return drosteZoom;
-}
-
-int Screen::getDrosteArms() const {
-    return drosteArms;
-}
-
-float Screen::getPower() const {
-    return power;
-}
-
-int Screen::getKaleidoscopeSegments() const {
-    return kaleidoscopeSegments;
-}
-
-float Screen::getKaleidoscopeAngle() const {
-    return kaleidoscopeAngle;
-}
-
-float Screen::getInversionRadius() const {
-    return inversionRadius;
-}
-
-float Screen::getSwirlStrength() const {
-    return swirlStrength;
-}
-
-float Screen::getSwirlRadius() const {
-    return swirlRadius;
-}
-
-int Screen::getTileCount() const {
-    return tileCount;
-}
-
-bool Screen::getTileMirror() const {
-    return tileMirror;
-}
-
-float Screen::getSharpenStrength() const {
-    return sharpenStrength;
-}
-
-float Screen::getHueShift() const {
-    return hueShift;
-}
-
-float Screen::getMobiusBReal() const {
-    return mobiusBReal;
-}
-
-float Screen::getMobiusBImag() const {
-    return mobiusBImag;
-}
-
-float Screen::getMobiusCReal() const {
-    return mobiusCReal;
-}
-
-float Screen::getMobiusCImag() const {
-    return mobiusCImag;
-}
-
-float Screen::getInvertAmount() const {
-    return invertAmount;
-}
-
-float Screen::getInvertContrast() const {
-    return invertContrast;
-}
-
-bool Screen::getInvertHue() const {
-    return invertHue;
-}
-
-float Screen::getChromaticSplit() const {
-    return chromaticSplit;
-}
-
-int Screen::getNewtonOrder() const {
-    return newtonOrder;
-}
-
-float Screen::getNewtonStep() const {
-    return newtonStep;
-}
-
-float Screen::getShearX() const {
-    return shearX;
-}
-
-float Screen::getShearY() const {
-    return shearY;
+const std::vector<float>& Screen::getModeParams() const {
+    return modeParams;
 }
 
 SDL_Color Screen::getOutlineColor() const {

@@ -1,27 +1,8 @@
 #pragma once
 #include <SDL2/SDL.h>
 #include "config.h"
-
-enum class DisplayMode {
-    Normal = 0,
-    Prop = 1,
-    LogPolar = 2,
-    Julia = 3,
-    Droste = 4,
-    Power = 5,
-    Kaleidoscope = 6,
-    Inversion = 7,
-    Swirl = 8,
-    Tile = 9,
-    Sharpen = 10,
-    HueShift = 11,
-    Mobius = 12,
-    Invert = 13,
-    Chromatic = 14,
-    Newton = 15,
-    Shear = 16,
-    Count
-};
+#include "display_modes.h"
+#include <vector>
 
 class Screen {
 public:
@@ -39,30 +20,8 @@ public:
     void setAlpha(float a);
     void setUpdateRate(float rate);
     void setDelay(float seconds);
-    void setDisplayMode(DisplayMode mode);
-    void setLogPolarMinRadius(float radius);
-    void setJuliaC(float real, float imag);
-    void setDrosteZoom(float zoom);
-    void setDrosteArms(int arms);
-    void setPower(float power);
-    void setKaleidoscopeSegments(int segments);
-    void setKaleidoscopeAngle(float degrees);
-    void setInversionRadius(float radius);
-    void setSwirlStrength(float turns);
-    void setSwirlRadius(float radius);
-    void setTileCount(int tiles);
-    void setTileMirror(bool mirror);
-    void setSharpenStrength(float strength);
-    void setHueShift(float turns);
-    void setMobiusB(float real, float imag);
-    void setMobiusC(float real, float imag);
-    void setInvertAmount(float amount);
-    void setInvertContrast(float contrast);
-    void setInvertHue(bool hueFlip);
-    void setChromaticSplit(float split);
-    void setNewtonOrder(int order);
-    void setNewtonStep(float step);
-    void setShear(float x, float y);
+    void setDisplayMode(int mode);
+    void setModeParam(int mode, int param, float value);
 
     // Getters
     int getId() const;
@@ -78,34 +37,9 @@ public:
     float getAlpha() const;
     float getUpdateRate() const;
     float getDelay() const;
-    DisplayMode getDisplayMode() const;
-    float getLogPolarMinRadius() const;
-    float getJuliaReal() const;
-    float getJuliaImag() const;
-    float getDrosteZoom() const;
-    int getDrosteArms() const;
-    float getPower() const;
-    int getKaleidoscopeSegments() const;
-    float getKaleidoscopeAngle() const;
-    float getInversionRadius() const;
-    float getSwirlStrength() const;
-    float getSwirlRadius() const;
-    int getTileCount() const;
-    bool getTileMirror() const;
-    float getSharpenStrength() const;
-    float getHueShift() const;
-    float getMobiusBReal() const;
-    float getMobiusBImag() const;
-    float getMobiusCReal() const;
-    float getMobiusCImag() const;
-    float getInvertAmount() const;
-    float getInvertContrast() const;
-    bool getInvertHue() const;
-    float getChromaticSplit() const;
-    int getNewtonOrder() const;
-    float getNewtonStep() const;
-    float getShearX() const;
-    float getShearY() const;
+    int getDisplayMode() const;
+    float getModeParam(int mode, int param) const;
+    const std::vector<float>& getModeParams() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -143,32 +77,6 @@ private:
     float targetY;
     float updateRate;
     float delay;
-    DisplayMode displayMode;
-    float logPolarMinRadius;
-    float juliaReal;
-    float juliaImag;
-    float drosteZoom;
-    int drosteArms;
-    float power;
-    int kaleidoscopeSegments;
-    float kaleidoscopeAngle;
-    float inversionRadius;
-    float swirlStrength;
-    float swirlRadius;
-    int tileCount;
-    bool tileMirror;
-    float sharpenStrength;
-    float hueShift;
-    float mobiusBReal;
-    float mobiusBImag;
-    float mobiusCReal;
-    float mobiusCImag;
-    float invertAmount;
-    float invertContrast;
-    bool invertHue;
-    float chromaticSplit;
-    int newtonOrder;
-    float newtonStep;
-    float shearX;
-    float shearY;
+    int displayMode;
+    std::vector<float> modeParams;
 };
