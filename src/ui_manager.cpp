@@ -113,6 +113,7 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
     ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - padding, viewport->WorkPos.y + viewport->WorkSize.y - padding),
         ImGuiCond_Always, ImVec2(1.0f, 1.0f));
     ImGui::SetNextWindowSize(ImVec2(300.0f, 0.0f));
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300.0f, 0.0f), ImVec2(300.0f, viewport->WorkSize.y * 0.8f));
 
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
@@ -127,9 +128,12 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         }
         ImGui::Separator();
 
-        drawDisplayModeCombo(selected);
-        drawModeParams(selected);
+        drawModeBrowser(selected);
+        drawModeStack(selected);
+
         ImGui::Spacing();
+        ImGui::SeparatorText("Screen");
+
         drawSizeSlider(screenManager, selected);
         ImGui::Spacing();
         drawRotationControl(selected);
@@ -245,31 +249,130 @@ void UiManager::drawDelaySlider(const std::vector<Screen*>& selected) {
     }
 }
 
-void UiManager::drawDisplayModeCombo(const std::vector<Screen*>& selected) {
-    const int current = selected.front()->getDisplayMode();
-    const std::string preview = std::string("Display: ") + DisplayModes::get(current).name;
+void UiManager::drawModeBrowser(const std::vector<Screen*>& selected) {
+    Screen* primary = selected.front();
+    const bool full = static_cast<int>(primary->getStack().size()) >= DisplayModes::MAX_STACK;
 
+    ImGui::BeginDisabled(full);
     ImGui::SetNextItemWidth(-FLT_MIN);
-    if (!ImGui::BeginCombo("##displayMode", preview.c_str())) return;
-
-    for (int mode = 0; mode < DisplayModes::count(); ++mode) {
-        if (ImGui::Selectable(DisplayModes::get(mode).name, mode == current)) {
+    if (ImGui::BeginCombo("##modeBrowser", full ? "Stack is full" : "Add display mode...")) {
+        for (int mode = 0; mode < DisplayModes::count(); ++mode) {
+            if (!ImGui::Selectable(DisplayModes::get(mode).name)) continue;
+            primary->addMode(mode);
             for (Screen* screen : selected) {
-                screen->setDisplayMode(mode);
+                screen->setStack(primary->getStack());
             }
         }
+        ImGui::EndCombo();
     }
-    ImGui::EndCombo();
+    ImGui::EndDisabled();
 }
 
-void UiManager::drawModeParams(const std::vector<Screen*>& selected) {
-    const int mode = selected.front()->getDisplayMode();
-    const ModeInfo& info = DisplayModes::get(mode);
+void UiManager::drawModeStack(const std::vector<Screen*>& selected) {
+    Screen* primary = selected.front();
+    const std::vector<ModeEntry>& stack = primary->getStack();
 
-    for (int index = 0; index < static_cast<int>(info.params.size()); ++index) {
-        const ModeParam& slot = info.params[index];
-        const std::string id = "##mode" + std::to_string(mode) + "param" + std::to_string(index);
-        float value = selected.front()->getModeParam(mode, index);
+    if (stack.empty()) {
+        ImGui::TextDisabled("Empty stack: this screen draws nothing.");
+        return;
+    }
+
+    bool hasSource = false;
+    for (const ModeEntry& entry : stack) {
+        hasSource = hasSource || (!entry.muted && DisplayModes::reads(entry.mode));
+    }
+    if (!hasSource) {
+        ImGui::TextDisabled("No Source: nothing is read from the canvas.");
+    }
+
+    int removeAt = -1;
+    int muteAt = -1;
+    int moveFrom = -1;
+    int moveTo = -1;
+
+    const int size = static_cast<int>(stack.size());
+    std::vector<bool> sourceBefore(size, false);
+    std::vector<bool> sourceAfter(size, false);
+    for (int index = 1; index < size; ++index) {
+        sourceBefore[index] = sourceBefore[index - 1] ||
+            (!stack[index - 1].muted && DisplayModes::reads(stack[index - 1].mode));
+    }
+    for (int index = size - 2; index >= 0; --index) {
+        sourceAfter[index] = sourceAfter[index + 1] ||
+            (!stack[index + 1].muted && DisplayModes::reads(stack[index + 1].mode));
+    }
+
+    for (int index = 0; index < size; ++index) {
+        const ModeEntry& entry = stack[index];
+        const ModeInfo& info = DisplayModes::get(entry.mode);
+        ImGui::PushID(index);
+
+        const bool unused =
+            (info.kind == ModeKind::Geometry && !sourceAfter[index]) ||
+            (info.kind == ModeKind::Color && !sourceBefore[index]);
+        const bool inactive = unused || entry.muted;
+        const std::string label = std::to_string(index + 1) + ". " + info.name +
+            (entry.muted ? " (muted)" : unused ? " (no effect)" : "");
+        const float rowWidth = ImGui::GetContentRegionAvail().x;
+        const float buttonWidth = ImGui::GetFrameHeight();
+
+        ImGui::SetNextItemAllowOverlap();
+        if (inactive) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+        const bool open = ImGui::TreeNodeEx("##entry",
+            (info.params.empty() ? ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen : 0), "%s", label.c_str());
+        if (inactive) ImGui::PopStyleColor();
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceNoDisableHover)) {
+            ImGui::SetDragDropPayload("MODE_ENTRY", &index, sizeof(int));
+            ImGui::TextUnformatted(label.c_str());
+            ImGui::EndDragDropSource();
+        }
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODE_ENTRY")) {
+                moveFrom = *static_cast<const int*>(payload->Data);
+                moveTo = index;
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::SameLine(rowWidth - buttonWidth * 2.0f - ImGui::GetStyle().ItemSpacing.x);
+        if (entry.muted) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+        if (ImGui::SmallButton("m")) muteAt = index;
+        if (entry.muted) ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip(entry.muted ? "Unmute" : "Mute");
+
+        ImGui::SameLine(rowWidth - buttonWidth);
+        if (ImGui::SmallButton("x")) removeAt = index;
+
+        if (open && !info.params.empty()) {
+            drawEntryParams(selected, index, entry);
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+
+    if (removeAt >= 0) {
+        primary->removeMode(removeAt);
+    } else if (muteAt >= 0) {
+        primary->setMuted(muteAt, !stack[muteAt].muted);
+    } else if (moveFrom >= 0) {
+        primary->moveMode(moveFrom, moveTo);
+    } else {
+        return;
+    }
+
+    for (Screen* screen : selected) {
+        screen->setStack(primary->getStack());
+    }
+}
+
+void UiManager::drawEntryParams(const std::vector<Screen*>& selected, int index, const ModeEntry& entry) {
+    const ModeInfo& info = DisplayModes::get(entry.mode);
+
+    for (int param = 0; param < static_cast<int>(info.params.size()); ++param) {
+        const ModeParam& slot = info.params[param];
+        const std::string id = "##param" + std::to_string(param);
+        float value = entry.params[param];
         bool changed = false;
 
         if (slot.kind == ParamKind::Boolean) {
@@ -291,7 +394,7 @@ void UiManager::drawModeParams(const std::vector<Screen*>& selected) {
 
         if (!changed) continue;
         for (Screen* screen : selected) {
-            screen->setModeParam(mode, index, value);
+            screen->setEntryParam(index, param, value);
         }
     }
 }

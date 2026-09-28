@@ -106,6 +106,25 @@ GLuint FractalManager::createTexture(int w, int h) {
     return texture;
 }
 
+void FractalManager::uploadStack(const Screen& screen) {
+    const std::vector<ModeEntry>& stack = screen.getStack();
+    const int size = std::min(static_cast<int>(stack.size()), DisplayModes::MAX_STACK);
+
+    std::vector<GLint> modes(size);
+    std::vector<GLfloat> params(size * DisplayModes::MAX_PARAMS);
+    for (int entry = 0; entry < size; ++entry) {
+        modes[entry] = stack[entry].muted ? -1 : stack[entry].mode;
+        for (int param = 0; param < DisplayModes::MAX_PARAMS; ++param) {
+            params[entry * DisplayModes::MAX_PARAMS + param] = stack[entry].params[param];
+        }
+    }
+
+    glUniform1i(glGetUniformLocation(screenShaderProgram, "stackSize"), size);
+    if (size == 0) return;
+    glUniform1iv(glGetUniformLocation(screenShaderProgram, "stackModes"), size, modes.data());
+    glUniform1fv(glGetUniformLocation(screenShaderProgram, "stackParams"), static_cast<GLsizei>(params.size()), params.data());
+}
+
 void FractalManager::copyFrame(GLuint source, int sourceW, int sourceH, GLuint destination, int destinationW, int destinationH) {
     const GLenum filter = (sourceW == destinationW && sourceH == destinationH) ? GL_NEAREST : GL_LINEAR;
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
@@ -210,7 +229,7 @@ void FractalManager::updateSnapshots(const std::vector<Screen>& screens, double 
     }
 
     for (const auto& screen : screens) {
-        if (DisplayModes::isProp(screen.getDisplayMode())) continue;
+        if (screen.getStack().empty()) continue;
 
         if (screen.getDelay() > 0.0f) {
             updateDelayed(screen, time);
@@ -303,11 +322,9 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         GLint texLoc = glGetUniformLocation(screenShaderProgram, "tex");
         GLint colorLoc = glGetUniformLocation(screenShaderProgram, "color");
         
-        if (!DisplayModes::isProp(screen.getDisplayMode())) {
-            glUniform1i(glGetUniformLocation(screenShaderProgram, "mode"), screen.getDisplayMode());
+        if (!screen.getStack().empty()) {
             glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
-            const std::vector<float>& modeParams = screen.getModeParams();
-            glUniform1fv(glGetUniformLocation(screenShaderProgram, "params"), static_cast<GLsizei>(modeParams.size()), modeParams.data());
+            uploadStack(screen);
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
             if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);

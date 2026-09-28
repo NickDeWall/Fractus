@@ -11,9 +11,10 @@ namespace {
         in vec2 vTexCoord;
         uniform sampler2D tex;
         uniform vec4 color;
-        uniform int mode;
         uniform float aspect;
-        uniform float params[PARAM_COUNT];
+        uniform int stackSize;
+        uniform int stackModes[MAX_STACK];
+        uniform float stackParams[PARAM_COUNT];
         out vec4 fragColor;
 
         vec3 rgbToHsv(vec3 rgb) {
@@ -36,8 +37,8 @@ namespace {
             return hsv.z * (1.0 - hsv.y * clamp(min(k, 4.0 - k), 0.0, 1.0));
         }
 
-        vec2 plane() {
-            return (vTexCoord - 0.5) * vec2(aspect, 1.0);
+        vec2 plane(vec2 point) {
+            return (point - 0.5) * vec2(aspect, 1.0);
         }
 
         vec2 toTexture(vec2 point) {
@@ -48,129 +49,130 @@ namespace {
             return any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)));
         }
 
+        vec4 readCanvas(vec2 uv) {
+            return offCanvas(uv) ? vec4(0.0) : textureLod(tex, uv, 0.0);
+        }
+
         void main() {
             vec2 uv = vTexCoord;
+            vec4 accum = vec4(0.0);
+
+            for (int entry = 0; entry < stackSize; ++entry) {
+                int mode = stackModes[entry];
+                float P0 = stackParams[entry * MAX_PARAMS + 0];
+                float P1 = stackParams[entry * MAX_PARAMS + 1];
+                float P2 = stackParams[entry * MAX_PARAMS + 2];
+                float P3 = stackParams[entry * MAX_PARAMS + 3];
 )";
 
     const std::vector<ModeInfo>& table() {
         static const std::vector<ModeInfo> modes = {
-            { "Normal", ModeKind::None, "", {} },
-            { "Prop", ModeKind::Prop, "", {} },
+            { "Source", ModeKind::Source, "", {} },
             { "Log-Polar", ModeKind::Geometry, R"(
                 float maxRadius = 0.5 * min(aspect, 1.0);
                 float lowRadius = maxRadius * P0;
-                float radius = lowRadius * exp(vTexCoord.x * log(maxRadius / lowRadius));
-                float angle = vTexCoord.y * TAU;
+                float radius = lowRadius * exp(uv.x * log(maxRadius / lowRadius));
+                float angle = uv.y * TAU;
                 uv = toTexture(radius * vec2(cos(angle), sin(angle)));
             )", {
                 { "Min radius %.4f", ParamKind::Float, Config::LOG_POLAR_MIN_RADIUS_LOW, Config::LOG_POLAR_MIN_RADIUS_HIGH, Config::LOG_POLAR_MIN_RADIUS, true },
-            } },
+            }, true },
             { "Julia (z\xC2\xB2 + c)", ModeKind::Geometry, R"(
                 vec2 span = vec2(aspect, 1.0) * JULIA_HEIGHT;
-                vec2 z = (vTexCoord - 0.5) * span;
+                vec2 z = (uv - 0.5) * span;
                 z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + vec2(P0, P1);
                 uv = z / span + 0.5;
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "c real %.4f", ParamKind::Float, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, Config::JULIA_DEFAULT_REAL, false },
                 { "c imag %.4f", ParamKind::Float, -Config::JULIA_C_LIMIT, Config::JULIA_C_LIMIT, Config::JULIA_DEFAULT_IMAG, false },
-            } },
+            }, true },
             { "Droste", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 float turn = fract(atan(z.y, z.x) / TAU);
                 float rings = log(max(length(z), 1e-6)) / log(P0);
                 uv = vec2(fract(rings + P1 * turn), turn);
             )", {
                 { "Zoom per ring %.2fx", ParamKind::Float, Config::DROSTE_MIN_ZOOM, Config::DROSTE_MAX_ZOOM, Config::DROSTE_DEFAULT_ZOOM, true },
                 { "Spiral arms %d", ParamKind::Integer, -Config::DROSTE_ARM_LIMIT, Config::DROSTE_ARM_LIMIT, Config::DROSTE_DEFAULT_ARMS, false },
-            } },
+            }, true },
             { "Power (z\xE2\x81\xBF)", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 float radius = pow(max(length(z), 1e-6) * 2.0, P0) * 0.5;
                 float angle = atan(z.y, z.x) * P0;
                 uv = toTexture(radius * vec2(cos(angle), sin(angle)));
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Power %.2f", ParamKind::Float, -Config::POWER_LIMIT, Config::POWER_LIMIT, Config::POWER_DEFAULT, false },
-            } },
+            }, true },
             { "Kaleidoscope", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 float offset = P1 * PI / 180.0;
                 float wedge = TAU / P0;
                 float angle = mod(atan(z.y, z.x) - offset, wedge);
                 angle = min(angle, wedge - angle) + offset;
                 uv = toTexture(length(z) * vec2(cos(angle), sin(angle)));
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Segments %d", ParamKind::Integer, Config::KALEIDOSCOPE_MIN_SEGMENTS, Config::KALEIDOSCOPE_MAX_SEGMENTS, Config::KALEIDOSCOPE_DEFAULT_SEGMENTS, false },
                 { "Wedge angle %.1f\xC2\xB0", ParamKind::Float, 0.0f, 360.0f, 0.0f, false },
-            } },
+            }, true },
             { "Inversion (1/z)", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 float lengthSquared = max(dot(z, z), 1e-8);
                 uv = toTexture(z * (P0 * P0 * 0.25) / lengthSquared);
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Circle radius %.3f", ParamKind::Float, Config::INVERSION_MIN_RADIUS, Config::INVERSION_MAX_RADIUS, Config::INVERSION_DEFAULT_RADIUS, true },
-            } },
+            }, true },
             { "Swirl", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 float extent = max(P1 * 0.5, 1e-6);
                 float falloff = max(1.0 - length(z) / extent, 0.0);
                 float angle = P0 * TAU * falloff * falloff;
                 float sine = sin(angle);
                 float cosine = cos(angle);
                 uv = toTexture(vec2(z.x * cosine - z.y * sine, z.x * sine + z.y * cosine));
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Swirl %.2f turns", ParamKind::Float, -Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_STRENGTH_LIMIT, Config::SWIRL_DEFAULT_STRENGTH, false },
                 { "Swirl radius %.2f", ParamKind::Float, Config::SWIRL_MIN_RADIUS, Config::SWIRL_MAX_RADIUS, Config::SWIRL_DEFAULT_RADIUS, false },
-            } },
+            }, true },
             { "Tile / Mirror", ModeKind::Geometry, R"(
-                vec2 scaled = vTexCoord * P0;
+                vec2 scaled = uv * P0;
                 vec2 cell = fract(scaled);
                 vec2 flipped = mod(floor(scaled), 2.0) * step(0.5, P1);
                 uv = mix(cell, 1.0 - cell, flipped);
             )", {
                 { "Tiles %d", ParamKind::Integer, Config::TILE_MIN_COUNT, Config::TILE_MAX_COUNT, Config::TILE_DEFAULT_COUNT, false },
                 { "Mirror tiles", ParamKind::Boolean, 0.0f, 1.0f, 1.0f, false },
-            } },
+            }, true },
             { "Sharpen", ModeKind::Sampling, R"(
                 vec2 texel = 1.0 / vec2(textureSize(tex, 0));
-                vec4 middle = texture(tex, uv);
-                vec4 neighbours = texture(tex, uv + vec2(texel.x, 0.0)) + texture(tex, uv - vec2(texel.x, 0.0))
-                    + texture(tex, uv + vec2(0.0, texel.y)) + texture(tex, uv - vec2(0.0, texel.y));
-                fragColor = max(middle + P0 * (middle * 4.0 - neighbours) * 0.25, vec4(0.0)) * color;
-                return;
+                vec4 middle = readCanvas(uv);
+                vec4 neighbours = readCanvas(uv + vec2(texel.x, 0.0)) + readCanvas(uv - vec2(texel.x, 0.0))
+                    + readCanvas(uv + vec2(0.0, texel.y)) + readCanvas(uv - vec2(0.0, texel.y));
+                layer = P0 * (middle * 4.0 - neighbours) * 0.25;
             )", {
                 { "Sharpen %.2f", ParamKind::Float, 0.0f, Config::SHARPEN_STRENGTH_LIMIT, Config::SHARPEN_DEFAULT_STRENGTH, false },
             } },
             { "Hue shift", ModeKind::Color, R"(
-                vec4 source = texture(tex, uv);
-                vec3 hsv = rgbToHsv(source.rgb);
+                vec3 hsv = rgbToHsv(accum.rgb);
                 hsv.x = fract(hsv.x + P0);
-                fragColor = vec4(hsvToRgb(hsv), source.a) * color;
-                return;
+                accum = vec4(hsvToRgb(hsv), accum.a);
             )", {
                 { "Hue %.3f turns", ParamKind::Float, -Config::HUE_SHIFT_LIMIT, Config::HUE_SHIFT_LIMIT, Config::HUE_SHIFT_DEFAULT, false },
             } },
             { "M\xC3\xB6" "bius", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 vec2 numerator = z + vec2(P0, P1);
                 vec2 denominator = vec2(P2 * z.x - P3 * z.y, P2 * z.y + P3 * z.x) + vec2(1.0, 0.0);
                 float lengthSquared = max(dot(denominator, denominator), 1e-8);
                 vec2 w = vec2(dot(numerator, denominator), numerator.y * denominator.x - numerator.x * denominator.y) / lengthSquared;
                 uv = toTexture(w);
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "shift real %.3f", ParamKind::Float, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT, Config::MOBIUS_DEFAULT_B_REAL, false },
                 { "shift imag %.3f", ParamKind::Float, -Config::MOBIUS_B_LIMIT, Config::MOBIUS_B_LIMIT, Config::MOBIUS_DEFAULT_B_IMAG, false },
                 { "bend real %.3f", ParamKind::Float, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT, Config::MOBIUS_DEFAULT_C_REAL, false },
                 { "bend imag %.3f", ParamKind::Float, -Config::MOBIUS_C_LIMIT, Config::MOBIUS_C_LIMIT, Config::MOBIUS_DEFAULT_C_IMAG, false },
-            } },
+            }, true },
             { "Invert", ModeKind::Color, R"(
-                vec4 source = texture(tex, uv);
-                vec3 straight = source.a > 0.0 ? source.rgb / source.a : source.rgb;
+                vec3 straight = accum.a > 0.0 ? accum.rgb / accum.a : accum.rgb;
                 vec3 flipped;
                 if (P2 > 0.5) {
                     vec3 hsv = rgbToHsv(straight);
@@ -180,26 +182,24 @@ namespace {
                     flipped = mix(straight, vec3(1.0) - straight, P0);
                 }
                 flipped = clamp((flipped - 0.5) * P1 + 0.5, 0.0, 1.0);
-                fragColor = vec4(flipped * source.a, source.a) * color;
-                return;
+                accum = vec4(flipped * accum.a, accum.a);
             )", {
                 { "Invert %.2f", ParamKind::Float, 0.0f, 1.0f, Config::INVERT_DEFAULT_AMOUNT, false },
                 { "Contrast %.2f", ParamKind::Float, Config::INVERT_MIN_CONTRAST, Config::INVERT_MAX_CONTRAST, Config::INVERT_DEFAULT_CONTRAST, false },
                 { "Hue flip", ParamKind::Boolean, 0.0f, 1.0f, 1.0f, false },
             } },
             { "Chromatic split", ModeKind::Sampling, R"(
-                vec2 offset = vTexCoord - 0.5;
-                vec4 source = texture(tex, uv);
-                float red = texture(tex, 0.5 + offset * (1.0 - P0)).r;
-                float blue = texture(tex, 0.5 + offset * (1.0 + P0)).b;
-                fragColor = vec4(red, source.g, blue, source.a) * color;
-                return;
+                vec2 offset = uv - 0.5;
+                vec4 source = readCanvas(uv);
+                float red = readCanvas(0.5 + offset * (1.0 - P0)).r;
+                float blue = readCanvas(0.5 + offset * (1.0 + P0)).b;
+                layer = vec4(red - source.r, 0.0, blue - source.b, 0.0);
             )", {
                 { "Split %.4f", ParamKind::Float, -Config::CHROMATIC_SPLIT_LIMIT, Config::CHROMATIC_SPLIT_LIMIT, Config::CHROMATIC_DEFAULT_SPLIT, false },
             } },
             { "Newton (z\xE2\x81\xBF - 1)", ModeKind::Geometry, R"(
                 vec2 span = vec2(aspect, 1.0) * NEWTON_HEIGHT;
-                vec2 z = (vTexCoord - 0.5) * span;
+                vec2 z = (uv - 0.5) * span;
                 float radius = max(length(z), 1e-6);
                 float angle = atan(z.y, z.x);
                 vec2 zPower = pow(radius, P0) * vec2(cos(P0 * angle), sin(P0 * angle)) - vec2(1.0, 0.0);
@@ -208,19 +208,17 @@ namespace {
                 float lengthSquared = max(dot(derivative, derivative), 1e-8);
                 vec2 quotient = vec2(dot(zPower, derivative), zPower.y * derivative.x - zPower.x * derivative.y) / lengthSquared;
                 uv = (z - P1 * quotient) / span + 0.5;
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Roots %d", ParamKind::Integer, Config::NEWTON_MIN_ORDER, Config::NEWTON_MAX_ORDER, Config::NEWTON_DEFAULT_ORDER, false },
                 { "Step %.2f", ParamKind::Float, Config::NEWTON_MIN_STEP, Config::NEWTON_MAX_STEP, Config::NEWTON_DEFAULT_STEP, false },
-            } },
+            }, true },
             { "Shear", ModeKind::Geometry, R"(
-                vec2 z = plane();
+                vec2 z = plane(uv);
                 uv = toTexture(vec2(z.x + P0 * z.y, z.y + P1 * z.x));
-                if (offCanvas(uv)) { fragColor = vec4(0.0); return; }
             )", {
                 { "Shear X %.3f", ParamKind::Float, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, 0.2f, false },
                 { "Shear Y %.3f", ParamKind::Float, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, 0.0f, false },
-            } },
+            }, true },
         };
         return modes;
     }
@@ -255,10 +253,6 @@ namespace DisplayModes {
         return static_cast<int>(get(mode).params.size());
     }
 
-    bool isProp(int mode) {
-        return get(mode).kind == ModeKind::Prop;
-    }
-
     float clampParam(int mode, int param, float value) {
         const ModeInfo& info = get(mode);
         if (param < 0 || param >= static_cast<int>(info.params.size())) return value;
@@ -270,28 +264,59 @@ namespace DisplayModes {
         return value;
     }
 
+    bool reads(int mode) {
+        const ModeKind kind = get(mode).kind;
+        return kind == ModeKind::Source || kind == ModeKind::Sampling;
+    }
+
+    int insertIndex(const std::vector<ModeEntry>& stack, int mode) {
+        if (!get(mode).insertBeforeSource) return static_cast<int>(stack.size());
+
+        for (int index = 0; index < static_cast<int>(stack.size()); ++index) {
+            if (get(stack[index].mode).kind == ModeKind::Source) return index;
+        }
+        return static_cast<int>(stack.size());
+    }
+
+    ModeEntry makeEntry(int mode) {
+        ModeEntry entry;
+        entry.mode = std::clamp(mode, 0, count() - 1);
+        const ModeInfo& info = get(entry.mode);
+        for (int param = 0; param < static_cast<int>(info.params.size()); ++param) {
+            entry.params[param] = info.params[param].defaultValue;
+        }
+        return entry;
+    }
+
     std::string buildFragmentShader() {
         const std::vector<ModeInfo>& modes = table();
-        std::string source = replaceAll(SHADER_PRELUDE, "PARAM_COUNT", std::to_string(count() * MAX_PARAMS));
+        std::string source = replaceAll(SHADER_PRELUDE, "PARAM_COUNT", std::to_string(MAX_STACK * MAX_PARAMS));
+        source = replaceAll(source, "MAX_STACK", std::to_string(MAX_STACK));
+        source = replaceAll(source, "MAX_PARAMS", std::to_string(MAX_PARAMS));
 
         for (int mode = 0; mode < count(); ++mode) {
             const ModeInfo& info = modes[mode];
-            if (info.glsl[0] == '\0') continue;
-
-            std::string body = info.glsl;
-            for (int param = 0; param < MAX_PARAMS; ++param) {
-                body = replaceAll(body, "P" + std::to_string(param),
-                    "params[" + std::to_string(mode * MAX_PARAMS + param) + "]");
-            }
-            body = replaceAll(body, "JULIA_HEIGHT", number(Config::JULIA_VIEW_HEIGHT));
+            std::string body = replaceAll(info.glsl, "JULIA_HEIGHT", number(Config::JULIA_VIEW_HEIGHT));
             body = replaceAll(body, "NEWTON_HEIGHT", number(Config::NEWTON_VIEW_HEIGHT));
 
-            source += "            if (mode == " + std::to_string(mode) + ") {\n";
-            source += body;
-            source += "\n            }\n";
+            source += "                if (mode == " + std::to_string(mode) + ") {\n";
+            if (info.kind == ModeKind::Source) {
+                source += "                    accum += readCanvas(uv);\n";
+            } else if (info.kind == ModeKind::Sampling) {
+                source += "                    vec4 layer = vec4(0.0);\n" + body +
+                    "\n                    accum += layer;\n";
+            } else {
+                source += body + "\n";
+            }
+            source += "                }\n";
         }
 
-        source += "            fragColor = texture(tex, uv) * color;\n        }\n";
+        source += R"(
+            }
+
+            fragColor = max(accum, vec4(0.0)) * color;
+        }
+)";
         return source;
     }
 }

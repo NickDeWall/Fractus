@@ -20,8 +20,12 @@ public:
     void setAlpha(float a);
     void setUpdateRate(float rate);
     void setDelay(float seconds);
-    void setDisplayMode(int mode);
-    void setModeParam(int mode, int param, float value);
+    void setStack(const std::vector<ModeEntry>& stack);
+    void addMode(int mode);
+    void removeMode(int index);
+    void setMuted(int index, bool muted);
+    void moveMode(int from, int to);
+    void setEntryParam(int index, int param, float value);
 
     // Getters
     int getId() const;
@@ -37,9 +41,7 @@ public:
     float getAlpha() const;
     float getUpdateRate() const;
     float getDelay() const;
-    int getDisplayMode() const;
-    float getModeParam(int mode, int param) const;
-    const std::vector<float>& getModeParams() const;
+    const std::vector<ModeEntry>& getStack() const;
     SDL_Color getOutlineColor() const;
     SDL_Color getScaleOutlineColor() const;
     float getTargetWidth() const;
@@ -77,6 +79,5 @@ private:
     float targetY;
     float updateRate;
     float delay;
-    int displayMode;
-    std::vector<float> modeParams;
+    std::vector<ModeEntry> stack;
 };

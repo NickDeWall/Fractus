@@ -8,15 +8,8 @@
 
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
-      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f), displayMode(0) {
-    modeParams.assign(DisplayModes::count() * DisplayModes::MAX_PARAMS, 0.0f);
-    for (int mode = 0; mode < DisplayModes::count(); ++mode) {
-        const ModeInfo& info = DisplayModes::get(mode);
-        for (int param = 0; param < static_cast<int>(info.params.size()); ++param) {
-            modeParams[mode * DisplayModes::MAX_PARAMS + param] = info.params[param].defaultValue;
-        }
-    }
-
+      fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f),
+      stack{ DisplayModes::makeEntry(0) } {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -66,13 +59,41 @@ void Screen::setDelay(float seconds) {
     delay = std::clamp(seconds, 0.0f, Config::MAX_DELAY);
 }
 
-void Screen::setDisplayMode(int mode) {
-    displayMode = std::clamp(mode, 0, DisplayModes::count() - 1);
+void Screen::setStack(const std::vector<ModeEntry>& newStack) {
+    stack = newStack;
+    if (static_cast<int>(stack.size()) > DisplayModes::MAX_STACK) {
+        stack.resize(DisplayModes::MAX_STACK);
+    }
 }
 
-void Screen::setModeParam(int mode, int param, float value) {
-    if (mode < 0 || mode >= DisplayModes::count() || param < 0 || param >= DisplayModes::MAX_PARAMS) return;
-    modeParams[mode * DisplayModes::MAX_PARAMS + param] = DisplayModes::clampParam(mode, param, value);
+void Screen::addMode(int mode) {
+    if (static_cast<int>(stack.size()) >= DisplayModes::MAX_STACK) return;
+    stack.insert(stack.begin() + DisplayModes::insertIndex(stack, mode), DisplayModes::makeEntry(mode));
+}
+
+void Screen::removeMode(int index) {
+    if (index < 0 || index >= static_cast<int>(stack.size())) return;
+    stack.erase(stack.begin() + index);
+}
+
+void Screen::setMuted(int index, bool muted) {
+    if (index < 0 || index >= static_cast<int>(stack.size())) return;
+    stack[index].muted = muted;
+}
+
+void Screen::moveMode(int from, int to) {
+    const int size = static_cast<int>(stack.size());
+    if (from < 0 || from >= size || to < 0 || to >= size || from == to) return;
+
+    const ModeEntry moved = stack[from];
+    stack.erase(stack.begin() + from);
+    stack.insert(stack.begin() + to, moved);
+}
+
+void Screen::setEntryParam(int index, int param, float value) {
+    if (index < 0 || index >= static_cast<int>(stack.size())) return;
+    if (param < 0 || param >= DisplayModes::MAX_PARAMS) return;
+    stack[index].params[param] = DisplayModes::clampParam(stack[index].mode, param, value);
 }
 
 int Screen::getId() const {
@@ -131,17 +152,8 @@ float Screen::getDelay() const {
     return delay;
 }
 
-int Screen::getDisplayMode() const {
-    return displayMode;
-}
-
-float Screen::getModeParam(int mode, int param) const {
-    if (mode < 0 || mode >= DisplayModes::count() || param < 0 || param >= DisplayModes::MAX_PARAMS) return 0.0f;
-    return modeParams[mode * DisplayModes::MAX_PARAMS + param];
-}
-
-const std::vector<float>& Screen::getModeParams() const {
-    return modeParams;
+const std::vector<ModeEntry>& Screen::getStack() const {
+    return stack;
 }
 
 SDL_Color Screen::getOutlineColor() const {

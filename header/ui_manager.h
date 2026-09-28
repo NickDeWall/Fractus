@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include <vector>
 #include <unordered_map>
+#include "display_modes.h"
 
 class Screen;
 class ScreenManager;
@@ -37,6 +38,7 @@ private:
     void drawRotationControl(const std::vector<Screen*>& selected);
     void drawRateSlider(const std::vector<Screen*>& selected);
     void drawDelaySlider(const std::vector<Screen*>& selected);
-    void drawDisplayModeCombo(const std::vector<Screen*>& selected);
-    void drawModeParams(const std::vector<Screen*>& selected);
+    void drawModeBrowser(const std::vector<Screen*>& selected);
+    void drawModeStack(const std::vector<Screen*>& selected);
+    void drawEntryParams(const std::vector<Screen*>& selected, int index, const ModeEntry& entry);
 };

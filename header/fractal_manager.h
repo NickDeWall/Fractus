@@ -50,6 +50,7 @@ private:
     void updateDelayed(const Screen& screen, double time);
     void historySize(const Screen& screen, int& outW, int& outH) const;
     void storeFrame(Frame& destination, GLuint source, int sourceW, int sourceH, int w, int h);
+    void uploadStack(const Screen& screen);
     void copyFrame(GLuint source, int sourceW, int sourceH, GLuint destination, int destinationW, int destinationH);
     void deleteDelayState(DelayState& state);
     void clearSnapshots();
