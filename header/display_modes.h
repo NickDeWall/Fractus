@@ -43,8 +43,14 @@ struct ModeEntry {
     float params[DisplayModes::MAX_PARAMS] = { 0.0f, 0.0f, 0.0f, 0.0f };
 };
 
+struct BrowserGroup {
+    const char* label;
+    std::vector<int> modes;
+};
+
 namespace DisplayModes {
     const std::vector<ModeInfo>& all();
+    const std::vector<BrowserGroup>& browserGroups();
     const ModeInfo& get(int mode);
     int count();
     int paramCount(int mode);

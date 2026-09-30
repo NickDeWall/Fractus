@@ -252,20 +252,39 @@ void UiManager::drawDelaySlider(const std::vector<Screen*>& selected) {
 void UiManager::drawModeBrowser(const std::vector<Screen*>& selected) {
     Screen* primary = selected.front();
     const bool full = static_cast<int>(primary->getStack().size()) >= DisplayModes::MAX_STACK;
+    const std::vector<BrowserGroup>& groups = DisplayModes::browserGroups();
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    const float width = (ImGui::GetContentRegionAvail().x - spacing * (groups.size() - 1)) / groups.size();
 
     ImGui::BeginDisabled(full);
-    ImGui::SetNextItemWidth(-FLT_MIN);
-    if (ImGui::BeginCombo("##modeBrowser", full ? "Stack is full" : "Add display mode...")) {
-        for (int mode = 0; mode < DisplayModes::count(); ++mode) {
-            if (!ImGui::Selectable(DisplayModes::get(mode).name)) continue;
-            primary->addMode(mode);
+    for (int group = 0; group < static_cast<int>(groups.size()); ++group) {
+        ImGui::PushID(group);
+        ImGui::SetNextItemWidth(width);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(220.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
+
+        int chosen = -1;
+        if (groups[group].modes.size() == 1) {
+            if (ImGui::Button(groups[group].label, ImVec2(width, 0.0f))) chosen = groups[group].modes.front();
+        } else if (ImGui::BeginCombo("##group", groups[group].label, ImGuiComboFlags_NoArrowButton)) {
+            for (int mode : groups[group].modes) {
+                if (ImGui::Selectable(DisplayModes::get(mode).name)) chosen = mode;
+            }
+            ImGui::EndCombo();
+        }
+
+        if (chosen >= 0) {
+            primary->addMode(chosen);
             for (Screen* screen : selected) {
                 screen->setStack(primary->getStack());
             }
         }
-        ImGui::EndCombo();
+
+        ImGui::PopID();
+        if (group + 1 < static_cast<int>(groups.size())) ImGui::SameLine();
     }
     ImGui::EndDisabled();
+
+    if (full) ImGui::TextDisabled("Stack is full.");
 }
 
 void UiManager::drawModeStack(const std::vector<Screen*>& selected) {

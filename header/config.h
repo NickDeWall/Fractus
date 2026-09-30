@@ -63,6 +63,7 @@ namespace Config {
     constexpr float MOBIUS_DEFAULT_C_IMAG = 0.0f;
     constexpr float MOBIUS_B_LIMIT = 1.0f;
     constexpr float MOBIUS_C_LIMIT = 4.0f;
+    constexpr float SOURCE_MAX_AMOUNT = 2.0f;
     constexpr float INVERT_DEFAULT_AMOUNT = 1.0f;
     constexpr float INVERT_DEFAULT_CONTRAST = 1.5f;
     constexpr float INVERT_MIN_CONTRAST = 0.5f;

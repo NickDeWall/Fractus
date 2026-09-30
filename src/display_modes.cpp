@@ -1,6 +1,7 @@
 #include "display_modes.h"
 #include "config.h"
 #include <algorithm>
+#include <string>
 #include <cmath>
 
 namespace {
@@ -67,7 +68,9 @@ namespace {
 
     const std::vector<ModeInfo>& table() {
         static const std::vector<ModeInfo> modes = {
-            { "Source", ModeKind::Source, "", {} },
+            { "Source", ModeKind::Source, "", {
+                { "Amount %.2f", ParamKind::Float, 0.0f, Config::SOURCE_MAX_AMOUNT, 1.0f, false },
+            } },
             { "Log-Polar", ModeKind::Geometry, R"(
                 float maxRadius = 0.5 * min(aspect, 1.0);
                 float lowRadius = maxRadius * P0;
@@ -223,6 +226,19 @@ namespace {
         return modes;
     }
 
+    std::vector<int> sortedModes(const std::vector<ModeKind>& kinds) {
+        std::vector<int> modes;
+        for (int mode = 0; mode < static_cast<int>(table().size()); ++mode) {
+            if (std::find(kinds.begin(), kinds.end(), table()[mode].kind) != kinds.end()) {
+                modes.push_back(mode);
+            }
+        }
+        std::sort(modes.begin(), modes.end(), [](int left, int right) {
+            return std::string(table()[left].name) < std::string(table()[right].name);
+        });
+        return modes;
+    }
+
     std::string replaceAll(std::string text, const std::string& from, const std::string& to) {
         for (size_t at = text.find(from); at != std::string::npos; at = text.find(from, at + to.size())) {
             text.replace(at, from.size(), to);
@@ -238,6 +254,15 @@ namespace {
 namespace DisplayModes {
     const std::vector<ModeInfo>& all() {
         return table();
+    }
+
+    const std::vector<BrowserGroup>& browserGroups() {
+        static const std::vector<BrowserGroup> groups = {
+            { "Aim", sortedModes({ ModeKind::Geometry }) },
+            { "Source", sortedModes({ ModeKind::Source }) },
+            { "Effects", sortedModes({ ModeKind::Sampling, ModeKind::Color }) },
+        };
+        return groups;
     }
 
     const ModeInfo& get(int mode) {
@@ -301,7 +326,7 @@ namespace DisplayModes {
 
             source += "                if (mode == " + std::to_string(mode) + ") {\n";
             if (info.kind == ModeKind::Source) {
-                source += "                    accum += readCanvas(uv);\n";
+                source += "                    accum += P0 * readCanvas(uv);\n";
             } else if (info.kind == ModeKind::Sampling) {
                 source += "                    vec4 layer = vec4(0.0);\n" + body +
                     "\n                    accum += layer;\n";
