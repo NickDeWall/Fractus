@@ -106,6 +106,36 @@ GLuint FractalManager::createTexture(int w, int h) {
     return texture;
 }
 
+void FractalManager::renderOutline(const Screen& screen, bool scaling, const glm::mat4& windowProjection) {
+    const SDL_Color outlineColor = scaling ? screen.getScaleOutlineColor() : screen.getOutlineColor();
+    const float margin = 2.0f * Config::OUTLINE_THICKNESS;
+    const float outlineWidth = screen.getWidth() + margin;
+    const float outlineHeight = screen.getHeight() + margin;
+
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, glm::vec3(screen.getX(), screen.getY(), 0.0f));
+    model = glm::rotate(model, glm::radians(screen.getRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::translate(model, glm::vec3(-outlineWidth / 2.0f, -outlineHeight / 2.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(outlineWidth, outlineHeight, 1.0f));
+
+    glUseProgram(screenShaderProgram);
+    glUniform1i(glGetUniformLocation(screenShaderProgram, "overlay"), 2);
+    glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
+    glUniform2f(glGetUniformLocation(screenShaderProgram, "planeScale"),
+        outlineWidth / std::max(screen.getWidth(), 1), outlineHeight / std::max(screen.getHeight(), 1));
+    uploadStack(screen);
+
+    glUniformMatrix4fv(glGetUniformLocation(screenShaderProgram, "projection"), 1, GL_FALSE, &windowProjection[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(screenShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+    glUniform4f(glGetUniformLocation(screenShaderProgram, "color"),
+        outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
 void FractalManager::uploadStack(const Screen& screen) {
     const std::vector<ModeEntry>& stack = screen.getStack();
     const int size = std::min(static_cast<int>(stack.size()), DisplayModes::MAX_STACK);
@@ -324,6 +354,8 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         
         if (!screen.getStack().empty()) {
             glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
+            glUniform1i(glGetUniformLocation(screenShaderProgram, "overlay"), 0);
+            glUniform2f(glGetUniformLocation(screenShaderProgram, "planeScale"), 1.0f, 1.0f);
             uploadStack(screen);
 
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
@@ -343,12 +375,17 @@ GLuint FractalManager::processFrame(const std::vector<Screen>& screens, int fram
         float r, g, b, alpha;
         screen.getColorF(r, g, b, alpha);
         
-        glUseProgram(colorShaderProgram);
-        
-        projLoc = glGetUniformLocation(colorShaderProgram, "projection");
-        modelLoc = glGetUniformLocation(colorShaderProgram, "model");
-        colorLoc = glGetUniformLocation(colorShaderProgram, "color");
-        
+        glUseProgram(screenShaderProgram);
+
+        projLoc = glGetUniformLocation(screenShaderProgram, "projection");
+        modelLoc = glGetUniformLocation(screenShaderProgram, "model");
+        colorLoc = glGetUniformLocation(screenShaderProgram, "color");
+
+        glUniform1i(glGetUniformLocation(screenShaderProgram, "overlay"), 1);
+        glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
+        glUniform2f(glGetUniformLocation(screenShaderProgram, "planeScale"), 1.0f, 1.0f);
+        uploadStack(screen);
+
         if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &offscreenProjection[0][0]);
         if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
         if (colorLoc != -1) glUniform4f(colorLoc, r * alpha, g * alpha, b * alpha, alpha);
@@ -468,58 +505,6 @@ void FractalManager::renderCurrentFrame() {
 }
 
 namespace OtherRenders {
-    void renderSelectionOutline(Screen* selected, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao) {
-        if (!selected) return;
-
-        int width = scalingMode ? tempWidth : selected->getWidth();
-        int height = scalingMode ? tempHeight : selected->getHeight();
-        float centerX = selected->getX();
-        float centerY = selected->getY();
-        float rotation = selected->getRotation();
-
-        SDL_Color outlineColor = scalingMode ? selected->getScaleOutlineColor() : selected->getOutlineColor();
-        
-        glUseProgram(colorShaderProgram);
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
-        glUniform4f(glGetUniformLocation(colorShaderProgram, "color"), outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
-        glBindVertexArray(vao);
-
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
-        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-(width + 2*Config::OUTLINE_THICKNESS)/2, height/2, 0.0f));
-        model = glm::scale(model, glm::vec3(width + 2*Config::OUTLINE_THICKNESS, Config::OUTLINE_THICKNESS, 1.0f));
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
-        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-(width + 2*Config::OUTLINE_THICKNESS)/2, -height/2 - Config::OUTLINE_THICKNESS, 0.0f));
-        model = glm::scale(model, glm::vec3(width + 2*Config::OUTLINE_THICKNESS, Config::OUTLINE_THICKNESS, 1.0f));
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
-        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(-width/2 - Config::OUTLINE_THICKNESS, -height/2, 0.0f));
-        model = glm::scale(model, glm::vec3(Config::OUTLINE_THICKNESS, height, 1.0f));
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(centerX, centerY, 0.0f));
-        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::translate(model, glm::vec3(width/2, -height/2, 0.0f));
-        model = glm::scale(model, glm::vec3(Config::OUTLINE_THICKNESS, height, 1.0f));
-        glUniformMatrix4fv(glGetUniformLocation(colorShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        glBindVertexArray(0);
-        glUseProgram(0);
-    }
-
     void initGL(int width, int height, GLuint& vao, GLuint& vbo) {
         glViewport(0, 0, width, height);
 

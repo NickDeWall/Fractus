@@ -58,10 +58,7 @@ Screen* ScreenManager::findScreenAtPosition(float x, float y) const {
     for (auto it = screens.rbegin(); it != screens.rend(); ++it) {
         const Screen& screen = *it;
 
-        if (pointInRotatedRect(x, y,
-            { screen.getX(), screen.getY() },
-            screen.getWidth(), screen.getHeight(),
-            screen.getRotation())) {
+        if (pointInScreen(x, y, screen)) {
             candidates.push_back(const_cast<Screen*>(&screen));
         }
     }
@@ -210,6 +207,21 @@ SDL_FPoint ScreenManager::rotatePoint(float cx, float cy, float x, float y, floa
     float yNew = dx * sinTheta + dy * cosTheta;
 
     return { cx + xNew, cy + yNew };
+}
+
+bool ScreenManager::pointInScreen(float px, float py, const Screen& screen) {
+    const float angleRad = -screen.getRotation() * Config::PI / 180.0f;
+    const float dx = px - screen.getX();
+    const float dy = py - screen.getY();
+    const float cosTheta = std::cos(angleRad);
+    const float sinTheta = std::sin(angleRad);
+
+    const float localX = dx * cosTheta - dy * sinTheta;
+    const float localY = dx * sinTheta + dy * cosTheta;
+    const float halfWidth = std::max(screen.getWidth() * 0.5f, 0.5f);
+    const float halfHeight = std::max(screen.getHeight() * 0.5f, 0.5f);
+
+    return DisplayModes::contains(screen.getStack(), localX / halfWidth, localY / halfHeight);
 }
 
 bool ScreenManager::pointInRotatedRect(float px, float py, SDL_FPoint rectCenter, float width, float height, float angle) {

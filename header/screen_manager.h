@@ -43,6 +43,7 @@ private:
     Screen* findScreenAtPosition(float x, float y) const;
     Screen* selectSmallestFromCandidates(const std::vector<Screen*>& candidates) const;
 
+    static bool pointInScreen(float px, float py, const Screen& screen);
     static SDL_FPoint rotatePoint(float cx, float cy, float x, float y, float angle);
     static bool pointInRotatedRect(float px, float py, SDL_FPoint rectCenter,
         float width, float height, float angle);

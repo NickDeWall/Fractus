@@ -17,6 +17,7 @@ public:
 
     GLuint processFrame(const std::vector<Screen>& screens, int frameCounter, double time);
     void renderCurrentFrame();
+    void renderOutline(const Screen& screen, bool scaling, const glm::mat4& windowProjection);
     GLuint loadPreviousFrame(int frameNum);
     void saveFrame(GLuint texture, int frameNum);
     void resize(int newWidth, int newHeight, const glm::mat4& newProjection);
@@ -78,7 +79,6 @@ private:
 };
 
 namespace OtherRenders {
-    void renderSelectionOutline(Screen* selectedScreen, bool scalingMode, int tempWidth, int tempHeight, GLuint colorShaderProgram, const glm::mat4& projection, GLuint vao);
     void initGL(int width, int height, GLuint& vao, GLuint& vbo);
     void cleanupGL(GLuint& vao, GLuint& vbo);
     bool initFPSTexture(GLuint& fpsTexture);

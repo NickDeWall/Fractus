@@ -511,7 +511,7 @@ void InputManager::draw() {
     fractalManager->renderCurrentFrame();
     
     for (Screen* screen : screenManager->getSelectedScreens()) {
-        OtherRenders::renderSelectionOutline(screen, scalingMode, screen->getWidth(), screen->getHeight(), colorShaderProgram, projection, vao);
+        fractalManager->renderOutline(*screen, scalingMode, projection);
     }
 
     if (Config::SHOW_FPS) {

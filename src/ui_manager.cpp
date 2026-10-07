@@ -364,12 +364,16 @@ void UiManager::drawModeStack(const std::vector<Screen*>& selected) {
             (!stack[index + 1].muted && DisplayModes::reads(stack[index + 1].mode));
     }
 
+    bool shapeSeen = false;
     for (int index = 0; index < size; ++index) {
         const ModeEntry& entry = stack[index];
         const ModeInfo& info = DisplayModes::get(entry.mode);
         ImGui::PushID(index);
 
-        const bool unused =
+        const bool duplicateShape = info.kind == ModeKind::Shape && shapeSeen;
+        if (info.kind == ModeKind::Shape && !entry.muted) shapeSeen = true;
+
+        const bool unused = duplicateShape ||
             (info.kind == ModeKind::Geometry && !sourceAfter[index]) ||
             (info.kind == ModeKind::Color && !sourceBefore[index]);
         const bool inactive = unused || entry.muted;

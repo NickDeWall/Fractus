@@ -5,6 +5,56 @@
 #include <cmath>
 
 namespace {
+    float wrapInto(float value, float period) {
+        return value - period * std::floor(value / period);
+    }
+
+    float ellipseDistance(const float*, float x, float y) {
+        return std::hypot(x, y) - 1.0f;
+    }
+
+    float polygonDistance(const float* p, float x, float y) {
+        const float turn = 6.28318530718f / p[0];
+        const float angle = std::atan2(y, x) + p[1] * 3.14159265359f / 180.0f;
+        return std::hypot(x, y) - std::cos(turn * 0.5f) / std::cos(wrapInto(angle + turn * 0.5f, turn) - turn * 0.5f);
+    }
+
+    float starDistance(const float* p, float x, float y) {
+        const float turn = 6.28318530718f / p[0];
+        const float halfTurn = turn * 0.5f;
+        const float angle = std::abs(wrapInto(std::atan2(y, x) + p[2] * 3.14159265359f / 180.0f + halfTurn, turn) - halfTurn);
+        const float alongX = p[1] * std::cos(halfTurn) - 1.0f;
+        const float alongY = p[1] * std::sin(halfTurn);
+        const float denominator = std::cos(angle) * alongY - std::sin(angle) * alongX;
+        const float edge = std::abs(denominator) < 1e-6f ? 1.0f : alongY / denominator;
+        return std::hypot(x, y) - edge;
+    }
+
+    float rhombusDistance(const float*, float x, float y) {
+        return std::abs(x) + std::abs(y) - 1.0f;
+    }
+
+    float roundedDistance(const float* p, float x, float y) {
+        const float insideX = std::max(std::abs(x) - (1.0f - p[0]), 0.0f);
+        const float insideY = std::max(std::abs(y) - (1.0f - p[0]), 0.0f);
+        return std::hypot(insideX, insideY) - p[0];
+    }
+
+    float crossDistance(const float* p, float x, float y) {
+        return std::min(std::max(std::abs(x) - p[0], std::abs(y) - 1.0f),
+            std::max(std::abs(y) - p[0], std::abs(x) - 1.0f));
+    }
+
+    float trapezoidDistance(const float* p, float x, float y) {
+        const float halfWidth = 1.0f + (p[0] - 1.0f) * (y * 0.5f + 0.5f);
+        return std::max(std::abs(y) - 1.0f, std::abs(x) - halfWidth);
+    }
+
+    float ringDistance(const float* p, float x, float y) {
+        const float radius = std::hypot(x, y);
+        return std::max(radius - 1.0f, p[0] - radius);
+    }
+
     const char* SHADER_PRELUDE = R"(
         #version 330 core
         const float TAU = 6.28318530718;
@@ -13,10 +63,18 @@ namespace {
         uniform sampler2D tex;
         uniform vec4 color;
         uniform float aspect;
+        uniform int overlay;
+        uniform vec2 planeScale;
         uniform int stackSize;
         uniform int stackModes[MAX_STACK];
         uniform float stackParams[PARAM_COUNT];
         out vec4 fragColor;
+
+        int gShape = -1;
+        float gS0 = 0.0;
+        float gS1 = 0.0;
+        float gS2 = 0.0;
+        float gS3 = 0.0;
 
         vec3 rgbToHsv(vec3 rgb) {
             float maxComponent = max(rgb.r, max(rgb.g, rgb.b));
@@ -54,9 +112,47 @@ namespace {
             return offCanvas(uv) ? vec4(0.0) : textureLod(tex, uv, 0.0);
         }
 
+        float shapeDistance(vec2 p) {
+            float S0 = gS0;
+            float S1 = gS1;
+            float S2 = gS2;
+            float S3 = gS3;
+            float d = max(abs(p.x), abs(p.y)) - 1.0;
+SHAPE_BRANCHES
+            return d;
+        }
+
+        float boundaryRadius(vec2 direction) {
+            float t = 0.5;
+            for (int step = 0; step < 8; ++step) {
+                t -= shapeDistance(t * direction);
+            }
+            return max(t, 1e-4);
+        }
+
+        vec2 discToSquare(vec2 disc, float round) {
+            float radius = length(disc);
+            vec2 direction = radius > 1e-6 ? disc / radius : vec2(1.0, 0.0);
+            vec2 radial = direction * radius / max(max(abs(direction.x), abs(direction.y)), 1e-6);
+
+            float sx = disc.x * disc.x;
+            float sy = disc.y * disc.y;
+            float rootTwo = 1.41421356237;
+            vec2 elliptical = vec2(
+                0.5 * sqrt(max(2.0 + sx - sy + rootTwo * 2.0 * disc.x, 0.0)) -
+                0.5 * sqrt(max(2.0 + sx - sy - rootTwo * 2.0 * disc.x, 0.0)),
+                0.5 * sqrt(max(2.0 - sx + sy + rootTwo * 2.0 * disc.y, 0.0)) -
+                0.5 * sqrt(max(2.0 - sx + sy - rootTwo * 2.0 * disc.y, 0.0)));
+
+            return mix(radial, elliptical, round);
+        }
+
         void main() {
             vec2 uv = vTexCoord;
             vec4 accum = vec4(0.0);
+            vec2 outline = (vTexCoord - 0.5) * 2.0 * planeScale;
+            float maskDistance = max(abs(outline.x), abs(outline.y)) - 1.0;
+            bool shapeApplied = false;
 
             for (int entry = 0; entry < stackSize; ++entry) {
                 int mode = stackModes[entry];
@@ -64,10 +160,82 @@ namespace {
                 float P1 = stackParams[entry * MAX_PARAMS + 1];
                 float P2 = stackParams[entry * MAX_PARAMS + 2];
                 float P3 = stackParams[entry * MAX_PARAMS + 3];
+                float P4 = stackParams[entry * MAX_PARAMS + 4];
+                float P5 = stackParams[entry * MAX_PARAMS + 5];
 )";
 
+    std::vector<ModeInfo> withShapeParams(std::vector<ModeInfo> modes) {
+        for (ModeInfo& info : modes) {
+            if (info.kind != ModeKind::Shape) continue;
+            info.params.push_back({ "Fit to shape", ParamKind::Boolean, 0.0f, 1.0f, 1.0f, false });
+            if (info.fitGlsl[0] == '\0') {
+                info.params.push_back({ "Round fit %.2f", ParamKind::Float, 0.0f, 1.0f, 1.0f, false });
+            }
+        }
+        return modes;
+    }
+
     const std::vector<ModeInfo>& table() {
-        static const std::vector<ModeInfo> modes = {
+        static const std::vector<ModeInfo> modes = withShapeParams({
+            { "Ellipse", ModeKind::Shape, R"(
+                d = length(p) - 1.0;
+            )", {}, true, "", ellipseDistance },
+            { "Polygon", ModeKind::Shape, R"(
+                float turn = TAU / S0;
+                float angle = atan(p.y, p.x) + S1 * PI / 180.0;
+                d = length(p) - cos(turn * 0.5) / cos(mod(angle + turn * 0.5, turn) - turn * 0.5);
+            )", {
+                { "Sides %d", ParamKind::Integer, 3.0f, 16.0f, 6.0f, false },
+                { "Angle %.0f\xC2\xB0", ParamKind::Float, 0.0f, 360.0f, 90.0f, false },
+            }, true, "", polygonDistance },
+            { "Star", ModeKind::Shape, R"(
+                float turn = TAU / S0;
+                float halfTurn = turn * 0.5;
+                float angle = abs(mod(atan(p.y, p.x) + S2 * PI / 180.0 + halfTurn, turn) - halfTurn);
+                vec2 tip = vec2(1.0, 0.0);
+                vec2 along = S1 * vec2(cos(halfTurn), sin(halfTurn)) - tip;
+                vec2 ray = vec2(cos(angle), sin(angle));
+                float denominator = ray.x * along.y - ray.y * along.x;
+                d = length(p) - (abs(denominator) < 1e-6 ? 1.0 : (tip.x * along.y - tip.y * along.x) / denominator);
+            )", {
+                { "Points %d", ParamKind::Integer, 3.0f, 16.0f, 5.0f, false },
+                { "Inner radius %.2f", ParamKind::Float, 0.05f, 0.95f, 0.45f, false },
+                { "Angle %.0f\xC2\xB0", ParamKind::Float, 0.0f, 360.0f, 90.0f, false },
+            }, true, "", starDistance },
+            { "Rhombus", ModeKind::Shape, R"(
+                d = abs(p.x) + abs(p.y) - 1.0;
+            )", {}, true, "", rhombusDistance },
+            { "Rounded rectangle", ModeKind::Shape, R"(
+                vec2 inner = max(abs(p) - (1.0 - S0), 0.0);
+                d = length(inner) - S0;
+            )", {
+                { "Corner %.2f", ParamKind::Float, 0.05f, 1.0f, 0.3f, false },
+            }, true, "", roundedDistance },
+            { "Cross", ModeKind::Shape, R"(
+                d = min(max(abs(p.x) - S0, abs(p.y) - 1.0), max(abs(p.y) - S0, abs(p.x) - 1.0));
+            )", {
+                { "Arm %.2f", ParamKind::Float, 0.05f, 1.0f, 0.35f, false },
+            }, true, "", crossDistance },
+            { "Trapezoid", ModeKind::Shape, R"(
+                float halfWidth = mix(1.0, S0, p.y * 0.5 + 0.5);
+                d = max(abs(p.y) - 1.0, abs(p.x) - halfWidth);
+            )", {
+                { "Top width %.2f", ParamKind::Float, 0.05f, 1.0f, 0.4f, false },
+            }, true, R"(
+                float halfWidth = max(mix(1.0, S0, p.y * 0.5 + 0.5), 1e-4);
+                md = max(abs(p.y) - 1.0, abs(p.x) - halfWidth);
+                q = vec2(p.x / halfWidth, p.y);
+            )", trapezoidDistance },
+            { "Ring", ModeKind::Shape, R"(
+                float radius = length(p);
+                d = max(radius - 1.0, S0 - radius);
+            )", {
+                { "Hole %.2f", ParamKind::Float, 0.05f, 0.95f, 0.5f, false },
+            }, true, R"(
+                float radius = length(p);
+                md = max(radius - 1.0, S0 - radius);
+                q = vec2(atan(p.y, p.x) / PI, ((radius - S0) / max(1.0 - S0, 1e-4)) * 2.0 - 1.0);
+            )", ringDistance },
             { "Source", ModeKind::Source, "", {
                 { "Amount %.2f", ParamKind::Float, 0.0f, Config::SOURCE_MAX_AMOUNT, 1.0f, false },
             } },
@@ -222,7 +390,7 @@ namespace {
                 { "Shear X %.3f", ParamKind::Float, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, 0.2f, false },
                 { "Shear Y %.3f", ParamKind::Float, -Config::SHEAR_LIMIT, Config::SHEAR_LIMIT, 0.0f, false },
             }, true },
-        };
+        });
         return modes;
     }
 
@@ -258,6 +426,7 @@ namespace DisplayModes {
 
     const std::vector<BrowserGroup>& browserGroups() {
         static const std::vector<BrowserGroup> groups = {
+            { "Shape", sortedModes({ ModeKind::Shape }) },
             { "Aim", sortedModes({ ModeKind::Geometry }) },
             { "Source", sortedModes({ ModeKind::Source }) },
             { "Effects", sortedModes({ ModeKind::Sampling, ModeKind::Color }) },
@@ -289,18 +458,40 @@ namespace DisplayModes {
         return value;
     }
 
+    float shapeDistance(const ModeEntry& entry, float x, float y) {
+        const ModeInfo& info = get(entry.mode);
+        if (info.distance == nullptr) return std::max(std::abs(x), std::abs(y)) - 1.0f;
+        return info.distance(entry.params, x, y);
+    }
+
+    bool contains(const std::vector<ModeEntry>& stack, float x, float y) {
+        for (const ModeEntry& entry : stack) {
+            if (entry.muted || get(entry.mode).kind != ModeKind::Shape) continue;
+            return shapeDistance(entry, x, y) <= 0.0f;
+        }
+        return std::max(std::abs(x), std::abs(y)) <= 1.0f;
+    }
+
     bool reads(int mode) {
         const ModeKind kind = get(mode).kind;
         return kind == ModeKind::Source || kind == ModeKind::Sampling;
     }
 
     int insertIndex(const std::vector<ModeEntry>& stack, int mode) {
+        if (get(mode).kind == ModeKind::Shape) return 0;
         if (!get(mode).insertBeforeSource) return static_cast<int>(stack.size());
 
         for (int index = 0; index < static_cast<int>(stack.size()); ++index) {
             if (get(stack[index].mode).kind == ModeKind::Source) return index;
         }
         return static_cast<int>(stack.size());
+    }
+
+    int sourceMode() {
+        for (int mode = 0; mode < count(); ++mode) {
+            if (get(mode).kind == ModeKind::Source) return mode;
+        }
+        return 0;
     }
 
     ModeEntry makeEntry(int mode) {
@@ -324,8 +515,34 @@ namespace DisplayModes {
             std::string body = replaceAll(info.glsl, "JULIA_HEIGHT", number(Config::JULIA_VIEW_HEIGHT));
             body = replaceAll(body, "NEWTON_HEIGHT", number(Config::NEWTON_VIEW_HEIGHT));
 
-            source += "                if (mode == " + std::to_string(mode) + ") {\n";
-            if (info.kind == ModeKind::Source) {
+            const std::string guard = info.kind == ModeKind::Shape ? "" : "overlay == 0 && ";
+            source += "                if (" + guard + "mode == " + std::to_string(mode) + ") {\n";
+            if (info.kind == ModeKind::Shape) {
+                const int own = static_cast<int>(info.params.size()) - (info.fitGlsl[0] == '\0' ? 2 : 1);
+                std::string fit = info.fitGlsl[0] == '\0' ? std::string(R"(
+                    float radius = length(p);
+                    vec2 direction = radius > 1e-6 ? p / radius : vec2(1.0, 0.0);
+                    float edge = boundaryRadius(direction);
+                    md = radius / edge - 1.0;
+                    q = discToSquare(p / edge, ROUND);
+                )") : std::string(info.fitGlsl);
+                fit = replaceAll(fit, "ROUND", "P" + std::to_string(own + 1));
+
+                std::string setup = "                    shapeApplied = true;\n                    gShape = " + std::to_string(mode) + ";\n";
+                for (int param = 0; param < 4; ++param) {
+                    const std::string index = std::to_string(param);
+                    setup += "                    gS" + index + " = P" + index + ";\n";
+                    setup += "                    float S" + index + " = P" + index + ";\n";
+                }
+
+                source += "                    if (!shapeApplied) {\n" + setup +
+                    "                    vec2 p = (uv - 0.5) * 2.0 * planeScale;\n"
+                    "                    vec2 q = p;\n"
+                    "                    float md = 0.0;\n" + fit +
+                    "\n                    maskDistance = md;\n"
+                    "                    if (P" + std::to_string(own) + " > 0.5) uv = q * 0.5 + 0.5;\n"
+                    "                    }\n";
+            } else if (info.kind == ModeKind::Source) {
                 source += "                    accum += P0 * readCanvas(uv);\n";
             } else if (info.kind == ModeKind::Sampling) {
                 source += "                    vec4 layer = vec4(0.0);\n" + body +
@@ -339,9 +556,27 @@ namespace DisplayModes {
         source += R"(
             }
 
-            fragColor = max(accum, vec4(0.0)) * color;
+            float edge = max(fwidth(maskDistance), 1e-5);
+            float coverage = clamp(0.5 - maskDistance / edge, 0.0, 1.0);
+
+            if (overlay == 2) {
+                fragColor = color * clamp((OUTLINE_HALF * edge - abs(maskDistance)) / edge + 0.5, 0.0, 1.0);
+            } else if (overlay == 1) {
+                fragColor = color * coverage;
+            } else {
+                fragColor = max(accum, vec4(0.0)) * color * coverage;
+            }
         }
 )";
+
+        std::string branches;
+        for (int mode = 0; mode < count(); ++mode) {
+            const ModeInfo& info = modes[mode];
+            if (info.kind != ModeKind::Shape) continue;
+            branches += "            if (gShape == " + std::to_string(mode) + ") {\n" + info.glsl + "\n            }\n";
+        }
+        source = replaceAll(source, "SHAPE_BRANCHES", branches);
+        source = replaceAll(source, "OUTLINE_HALF", number(Config::OUTLINE_THICKNESS * 0.5f));
         return source;
     }
 }
