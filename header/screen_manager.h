@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <SDL2/SDL.h>
 #include "screen.h"
 #include "config.h"
@@ -19,6 +20,10 @@ public:
     void resize(int newWidth, int newHeight);
 
     SDL_FPoint clampSize(float screenWidth, float screenHeight) const;
+    SDL_FPoint clampSizeFree(float screenWidth, float screenHeight) const;
+    void beginStretch(SDL_FPoint mousePos);
+    void updateStretch(SDL_FPoint mousePos);
+    void endStretch();
     int getWidth() const { return width; }
     int getHeight() const { return height; }
     bool isSelected(const Screen& screen) const;
@@ -30,6 +35,8 @@ private:
     std::unordered_set<int> selectedIds;
     int nextId;
     SDL_FPoint lastMousePos;
+    SDL_FPoint stretchStart;
+    std::unordered_map<int, SDL_FPoint> stretchBaseline;
     int width;
     int height;
 

@@ -117,6 +117,47 @@ void ScreenManager::handleScaling(int scrollY) {
     }
 }
 
+SDL_FPoint ScreenManager::clampSizeFree(float screenWidth, float screenHeight) const {
+    const float minSize = 10.0f;
+    return {
+        std::clamp(screenWidth, minSize, width * Config::MAX_SCREEN_RATIO),
+        std::clamp(screenHeight, minSize, height * Config::MAX_SCREEN_RATIO)
+    };
+}
+
+void ScreenManager::beginStretch(SDL_FPoint mousePos) {
+    stretchStart = mousePos;
+    stretchBaseline.clear();
+    for (Screen* screen : getSelectedScreens()) {
+        stretchBaseline[screen->getId()] = { screen->getTargetWidth(), screen->getTargetHeight() };
+    }
+}
+
+void ScreenManager::updateStretch(SDL_FPoint mousePos) {
+    const std::vector<Screen*> selected = getSelectedScreens();
+    if (selected.empty()) return;
+
+    const auto primary = stretchBaseline.find(selected.front()->getId());
+    if (primary == stretchBaseline.end()) return;
+
+    const float minSize = 10.0f;
+    const float widthRatio = std::max(minSize, primary->second.x + mousePos.x - stretchStart.x) / primary->second.x;
+    const float heightRatio = std::max(minSize, primary->second.y + stretchStart.y - mousePos.y) / primary->second.y;
+
+    for (Screen* screen : selected) {
+        const auto base = stretchBaseline.find(screen->getId());
+        if (base == stretchBaseline.end()) continue;
+
+        const SDL_FPoint size = clampSizeFree(base->second.x * widthRatio, base->second.y * heightRatio);
+        screen->setWidth(size.x);
+        screen->setHeight(size.y);
+    }
+}
+
+void ScreenManager::endStretch() {
+    stretchBaseline.clear();
+}
+
 SDL_FPoint ScreenManager::clampSize(float screenWidth, float screenHeight) const {
     const float minSize = 10.0f;
     const float maxWidth = width * Config::MAX_SCREEN_RATIO;

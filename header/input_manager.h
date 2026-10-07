@@ -35,10 +35,6 @@ private:
     
     // Scaling mode variables
     bool scalingMode;
-    SDL_FPoint scaleStartPos;
-    SDL_FPoint originalDimensions;
-    GLuint frozenFrame;
-    int tempWidth, tempHeight;
     
     // FPS counter variables
     TTF_Font* font;
@@ -67,7 +63,6 @@ private:
     bool isFullscreen() const;
     void handleResize();
     void logStartupInfo();
-    void handleScalingMotion(const SDL_Event& event);
     void handleExitScaling(const SDL_Event& event);
     void handleMouseClick(const SDL_MouseButtonEvent& event);
     void handleKeyPress(const std::string& event);

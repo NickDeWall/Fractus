@@ -175,17 +175,60 @@ void UiManager::drawSizeSlider(ScreenManager& screenManager, const std::vector<S
         "Size %.1f%%", ImGuiSliderFlags_AlwaysClamp);
     sizeEditing = ImGui::IsItemActive();
 
-    if (!changed || sizeBasePercent <= 0.0f) return;
+    if (changed && sizeBasePercent > 0.0f) {
 
-    const float ratio = percent / sizeBasePercent;
-    for (Screen* screen : selected) {
-        const auto base = sizeBaseline.find(screen->getId());
-        if (base == sizeBaseline.end()) continue;
+        const float ratio = percent / sizeBasePercent;
+        for (Screen* screen : selected) {
+            const auto base = sizeBaseline.find(screen->getId());
+            if (base == sizeBaseline.end()) continue;
 
-        const SDL_FPoint size = screenManager.clampSize(base->second.x * ratio, base->second.y * ratio);
-        screen->setWidth(size.x);
-        screen->setHeight(size.y);
+            const SDL_FPoint size = screenManager.clampSize(base->second.x * ratio, base->second.y * ratio);
+            screen->setWidth(size.x);
+            screen->setHeight(size.y);
+        }
     }
+
+    drawProportions(screenManager, selected);
+}
+
+void UiManager::drawProportions(ScreenManager& screenManager, const std::vector<Screen*>& selected) {
+    if (!ImGui::TreeNodeEx("Proportions", ImGuiTreeNodeFlags_SpanAvailWidth)) return;
+
+    Screen* primary = selected.front();
+    float widthPercent = primary->getTargetWidth() * 100.0f / screenManager.getWidth();
+    float heightPercent = primary->getTargetHeight() * 100.0f / screenManager.getHeight();
+    const float maximum = Config::MAX_SCREEN_RATIO * 100.0f;
+    const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##screenWidth", &widthPercent, 1.0f, maximum, "Width %.1f%%", flags)) {
+        for (Screen* screen : selected) {
+            const SDL_FPoint size = screenManager.clampSizeFree(widthPercent * screenManager.getWidth() / 100.0f,
+                screen->getTargetHeight());
+            screen->setWidth(size.x);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::SliderFloat("##screenHeight", &heightPercent, 1.0f, maximum, "Height %.1f%%", flags)) {
+        for (Screen* screen : selected) {
+            const SDL_FPoint size = screenManager.clampSizeFree(screen->getTargetWidth(),
+                heightPercent * screenManager.getHeight() / 100.0f);
+            screen->setHeight(size.y);
+        }
+    }
+
+    if (ImGui::Button("Match display shape", ImVec2(-FLT_MIN, 0.0f))) {
+        const float displayRatio = static_cast<float>(screenManager.getHeight()) / screenManager.getWidth();
+        for (Screen* screen : selected) {
+            const SDL_FPoint size = screenManager.clampSizeFree(screen->getTargetWidth(),
+                screen->getTargetWidth() * displayRatio);
+            screen->setWidth(size.x);
+            screen->setHeight(size.y);
+        }
+    }
+
+    ImGui::TreePop();
 }
 
 void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {

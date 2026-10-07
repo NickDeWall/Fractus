@@ -140,11 +140,6 @@ InputManager::InputManager() {
     ui = std::make_unique<UiManager>(window, glContext);
     frameCounter = 0;
     scalingMode = false;
-    scaleStartPos = { 0, 0 };
-    originalDimensions = { 0, 0 };
-    frozenFrame = 0;
-    tempWidth = 0;
-    tempHeight = 0;
 
     lastFPSTime = SDL_GetTicks();
     fpsFrameCount = 0;
@@ -168,9 +163,6 @@ InputManager::InputManager() {
 
 InputManager::~InputManager() {
     ui.reset();
-    if (frozenFrame) {
-        glDeleteTextures(1, &frozenFrame);
-    }
     if (fpsTexture) {
         glDeleteTextures(1, &fpsTexture);
     }
@@ -361,6 +353,12 @@ bool InputManager::handleEvents() {
                     }
                     ui->closeScreenMenu();
                 }
+                else if (sym == SDLK_SPACE && !screenManager->getSelectedScreens().empty()) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+                    scalingMode = true;
+                    screenManager->beginStretch({ static_cast<float>(x), static_cast<float>(y) });
+                }
                 else if (sym == SDLK_e && !screenManager->getSelectedScreens().empty()) {
                     ui->toggleScreenMenu();
                 }
@@ -373,9 +371,7 @@ bool InputManager::handleEvents() {
         case SDL_KEYUP:
             handleExitScaling(event);
             break;
-        case SDL_MOUSEMOTION:
-            handleScalingMotion(event);
-            break;
+
         }
     }
 
@@ -414,26 +410,10 @@ bool InputManager::handleEvents() {
     return true;
 }
 
-void InputManager::handleScalingMotion(const SDL_Event& event) {
-    if (scalingMode) {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        SDL_FPoint currentPos = { static_cast<float>(x), static_cast<float>(y) };
-        float deltaX = currentPos.x - scaleStartPos.x;
-        float deltaY = currentPos.y - scaleStartPos.y;
-        tempWidth = std::max(Config::MIN_SCREEN_SIZE, std::min(static_cast<int>(originalDimensions.x + deltaX), static_cast<int>(width * Config::MAX_SCREEN_RATIO)));
-        tempHeight = std::max(Config::MIN_SCREEN_SIZE, std::min(static_cast<int>(originalDimensions.y - deltaY), static_cast<int>(height * Config::MAX_SCREEN_RATIO)));
-    }
-}
-
 void InputManager::handleExitScaling(const SDL_Event& event) {
-    if (event.key.keysym.sym == SDLK_SPACE && scalingMode) {
-        scalingMode = false;
-        for (Screen* screen : screenManager->getSelectedScreens()) {
-            screen->setWidth(tempWidth);
-            screen->setHeight(tempHeight);
-        }
-    }
+    if (event.key.keysym.sym != SDLK_SPACE || !scalingMode) return;
+    scalingMode = false;
+    screenManager->endStretch();
 }
 
 void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
@@ -496,11 +476,14 @@ void InputManager::handleAlpha(const int& dir) {
 }
 
 void InputManager::update() {
-    if (!scalingMode) {
+    {
         int x, y;
         SDL_GetMouseState(&x, &y);
         SDL_FPoint mousePos = { static_cast<float>(x), static_cast<float>(y) };
-        screenManager->handleDragging(mousePos, !ui->wantsMouse());
+        if (scalingMode) {
+            screenManager->updateStretch(mousePos);
+        }
+        screenManager->handleDragging(mousePos, !scalingMode && !ui->wantsMouse());
         screenManager->update(deltaTime, rotateInput);
         elapsedTime += deltaTime;
         currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
@@ -528,7 +511,7 @@ void InputManager::draw() {
     fractalManager->renderCurrentFrame();
     
     for (Screen* screen : screenManager->getSelectedScreens()) {
-        OtherRenders::renderSelectionOutline(screen, scalingMode, tempWidth, tempHeight, colorShaderProgram, projection, vao);
+        OtherRenders::renderSelectionOutline(screen, scalingMode, screen->getWidth(), screen->getHeight(), colorShaderProgram, projection, vao);
     }
 
     if (Config::SHOW_FPS) {
