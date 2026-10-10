@@ -145,7 +145,24 @@ namespace {
         }
 
         vec4 readCanvas(vec2 uv) {
-            return offCanvas(uv) ? vec4(0.0) : SAMPLE_FILTER(uv);
+            vec2 size = vec2(textureSize(tex, 0));
+            vec2 stepX = dFdx(uv) * size;
+            vec2 stepY = dFdy(uv) * size;
+            float longAxis = max(length(stepX), length(stepY));
+
+            if (offCanvas(uv)) return vec4(0.0);
+
+            if (ANISO_SAMPLES < 2 || longAxis <= 1.0) return SAMPLE_FILTER(uv);
+
+            vec2 major = (length(stepX) > length(stepY) ? stepX : stepY) / size;
+            int taps = int(min(ceil(longAxis), float(ANISO_SAMPLES)));
+
+            vec4 total = vec4(0.0);
+            for (int tap = 0; tap < taps; ++tap) {
+                float offset = (float(tap) + 0.5) / float(taps) - 0.5;
+                total += sampleBilinear(uv + major * offset);
+            }
+            return total / float(taps);
         }
 
         float shapeDistance(vec2 p) {
@@ -613,6 +630,7 @@ namespace DisplayModes {
         }
         source = replaceAll(source, "SHAPE_BRANCHES", branches);
         source = replaceAll(source, "OUTLINE_HALF", number(Config::OUTLINE_THICKNESS * 0.5f));
+        source = replaceAll(source, "ANISO_SAMPLES", std::to_string(Config::ANISO_SAMPLES));
         source = replaceAll(source, "SAMPLE_FILTER", Config::BICUBIC_SAMPLING ? "sampleBicubic" : "sampleBilinear");
         return source;
     }

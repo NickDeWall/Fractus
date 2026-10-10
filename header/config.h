@@ -64,6 +64,7 @@ namespace Config {
     constexpr float MOBIUS_B_LIMIT = 1.0f;
     constexpr float MOBIUS_C_LIMIT = 4.0f;
     constexpr bool BICUBIC_SAMPLING = true;
+    constexpr int ANISO_SAMPLES = 4;
     constexpr float SOURCE_MAX_AMOUNT = 2.0f;
     constexpr float INVERT_DEFAULT_AMOUNT = 1.0f;
     constexpr float INVERT_DEFAULT_CONTRAST = 1.5f;
@@ -109,8 +110,8 @@ namespace Config {
 
     constexpr float RENDER_SCALE = 1.0f;
 
-    constexpr int MAX_RENDER_WIDTH = 2560;
-    constexpr int MAX_RENDER_HEIGHT = 1440;
+    constexpr int MAX_RENDER_WIDTH = 3840;
+    constexpr int MAX_RENDER_HEIGHT = 2160;
 
     constexpr int MAX_CACHED_SURFACES = 20;
     constexpr bool USE_HARDWARE_ACCEL = true;
