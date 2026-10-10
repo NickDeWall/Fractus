@@ -108,8 +108,44 @@ namespace {
             return any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)));
         }
 
+        vec4 sampleBilinear(vec2 uv) {
+            return textureLod(tex, uv, 0.0);
+        }
+
+        vec4 sampleBicubic(vec2 uv) {
+            vec2 size = vec2(textureSize(tex, 0));
+            vec2 texel = 1.0 / size;
+            vec2 position = uv * size - 0.5;
+            vec2 fraction = fract(position);
+            vec2 base = (position - fraction + 0.5) * texel;
+
+            vec2 w0 = fraction * (-0.5 + fraction * (1.0 - 0.5 * fraction));
+            vec2 w1 = 1.0 + fraction * fraction * (-2.5 + 1.5 * fraction);
+            vec2 w2 = fraction * (0.5 + fraction * (2.0 - 1.5 * fraction));
+            vec2 w3 = fraction * fraction * (-0.5 + 0.5 * fraction);
+
+            vec2 middle = w1 + w2;
+            vec2 low = base - texel;
+            vec2 high = base + texel * 2.0;
+            vec2 centre = base + texel * (w2 / middle);
+
+            vec4 result = textureLod(tex, vec2(low.x, low.y), 0.0) * (w0.x * w0.y);
+            result += textureLod(tex, vec2(centre.x, low.y), 0.0) * (middle.x * w0.y);
+            result += textureLod(tex, vec2(high.x, low.y), 0.0) * (w3.x * w0.y);
+
+            result += textureLod(tex, vec2(low.x, centre.y), 0.0) * (w0.x * middle.y);
+            result += textureLod(tex, vec2(centre.x, centre.y), 0.0) * (middle.x * middle.y);
+            result += textureLod(tex, vec2(high.x, centre.y), 0.0) * (w3.x * middle.y);
+
+            result += textureLod(tex, vec2(low.x, high.y), 0.0) * (w0.x * w3.y);
+            result += textureLod(tex, vec2(centre.x, high.y), 0.0) * (middle.x * w3.y);
+            result += textureLod(tex, vec2(high.x, high.y), 0.0) * (w3.x * w3.y);
+
+            return max(result, vec4(0.0));
+        }
+
         vec4 readCanvas(vec2 uv) {
-            return offCanvas(uv) ? vec4(0.0) : textureLod(tex, uv, 0.0);
+            return offCanvas(uv) ? vec4(0.0) : SAMPLE_FILTER(uv);
         }
 
         float shapeDistance(vec2 p) {
@@ -577,6 +613,7 @@ namespace DisplayModes {
         }
         source = replaceAll(source, "SHAPE_BRANCHES", branches);
         source = replaceAll(source, "OUTLINE_HALF", number(Config::OUTLINE_THICKNESS * 0.5f));
+        source = replaceAll(source, "SAMPLE_FILTER", Config::BICUBIC_SAMPLING ? "sampleBicubic" : "sampleBilinear");
         return source;
     }
 }
