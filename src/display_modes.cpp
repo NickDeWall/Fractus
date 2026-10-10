@@ -152,7 +152,21 @@ namespace {
 
             if (offCanvas(uv)) return vec4(0.0);
 
-            if (ANISO_SAMPLES < 2 || longAxis <= 1.0) return SAMPLE_FILTER(uv);
+            if (longAxis <= 1.0) {
+                float magnification = 1.0 / max(longAxis, 1e-4);
+                float radius = min(MAGNIFY_SMOOTH_STRENGTH * log2(max(magnification, 1.0)), MAGNIFY_SMOOTH_MAX);
+                if (radius <= 0.0) return SAMPLE_FILTER(uv);
+
+                vec2 spread = radius * 0.5 / size;
+                vec4 middle = SAMPLE_FILTER(uv);
+                vec4 corners = sampleBilinear(uv + vec2(spread.x, spread.y))
+                    + sampleBilinear(uv + vec2(-spread.x, spread.y))
+                    + sampleBilinear(uv + vec2(spread.x, -spread.y))
+                    + sampleBilinear(uv + vec2(-spread.x, -spread.y));
+                return (middle * 2.0 + corners) / 6.0;
+            }
+
+            if (ANISO_SAMPLES < 2) return SAMPLE_FILTER(uv);
 
             vec2 major = (length(stepX) > length(stepY) ? stepX : stepY) / size;
             int taps = int(min(ceil(longAxis), float(ANISO_SAMPLES)));
@@ -630,6 +644,8 @@ namespace DisplayModes {
         }
         source = replaceAll(source, "SHAPE_BRANCHES", branches);
         source = replaceAll(source, "OUTLINE_HALF", number(Config::OUTLINE_THICKNESS * 0.5f));
+        source = replaceAll(source, "MAGNIFY_SMOOTH_STRENGTH", number(Config::MAGNIFY_SMOOTH_STRENGTH));
+        source = replaceAll(source, "MAGNIFY_SMOOTH_MAX", number(Config::MAGNIFY_SMOOTH_MAX));
         source = replaceAll(source, "ANISO_SAMPLES", std::to_string(Config::ANISO_SAMPLES));
         source = replaceAll(source, "SAMPLE_FILTER", Config::BICUBIC_SAMPLING ? "sampleBicubic" : "sampleBilinear");
         return source;

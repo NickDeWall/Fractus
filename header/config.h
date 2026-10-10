@@ -65,6 +65,8 @@ namespace Config {
     constexpr float MOBIUS_C_LIMIT = 4.0f;
     constexpr bool BICUBIC_SAMPLING = true;
     constexpr int ANISO_SAMPLES = 4;
+    constexpr float MAGNIFY_SMOOTH_STRENGTH = 0.5f;
+    constexpr float MAGNIFY_SMOOTH_MAX = 1.5f;
     constexpr float SOURCE_MAX_AMOUNT = 2.0f;
     constexpr float INVERT_DEFAULT_AMOUNT = 1.0f;
     constexpr float INVERT_DEFAULT_CONTRAST = 1.5f;
