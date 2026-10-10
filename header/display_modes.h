@@ -60,6 +60,7 @@ namespace DisplayModes {
     int count();
     int paramCount(int mode);
     float clampParam(int mode, int param, float value);
+    bool softLimits(int mode);
     int sourceMode();
     ModeEntry makeEntry(int mode);
     int insertIndex(const std::vector<ModeEntry>& stack, int mode);

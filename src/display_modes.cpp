@@ -514,11 +514,23 @@ namespace DisplayModes {
         return static_cast<int>(get(mode).params.size());
     }
 
+    bool softLimits(int mode) {
+        const ModeKind kind = get(mode).kind;
+        return kind == ModeKind::Source || kind == ModeKind::Sampling;
+    }
+
     float clampParam(int mode, int param, float value) {
         const ModeInfo& info = get(mode);
         if (param < 0 || param >= static_cast<int>(info.params.size())) return value;
 
         const ModeParam& slot = info.params[param];
+        if (!std::isfinite(value)) return slot.defaultValue;
+
+        if (slot.kind == ParamKind::Float && softLimits(mode)) {
+            const float margin = (slot.maximum - slot.minimum) * Config::SOFT_LIMIT_MARGIN;
+            return std::clamp(value, slot.minimum - margin, slot.maximum + margin);
+        }
+
         value = std::clamp(value, slot.minimum, slot.maximum);
         if (slot.kind == ParamKind::Integer) value = std::round(value);
         if (slot.kind == ParamKind::Boolean) value = value > 0.5f ? 1.0f : 0.0f;

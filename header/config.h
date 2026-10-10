@@ -67,6 +67,8 @@ namespace Config {
     constexpr int ANISO_SAMPLES = 4;
     constexpr float MAGNIFY_SMOOTH_STRENGTH = 0.5f;
     constexpr float MAGNIFY_SMOOTH_MAX = 1.5f;
+    constexpr float SOFT_LIMIT_MARGIN = 10.0f;
+    constexpr const char* PRECISE_FORMAT = "%.6f";
     constexpr float SOURCE_MAX_AMOUNT = 2.0f;
     constexpr float INVERT_DEFAULT_AMOUNT = 1.0f;
     constexpr float INVERT_DEFAULT_CONTRAST = 1.5f;

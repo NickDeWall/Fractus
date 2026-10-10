@@ -7,6 +7,7 @@
 #include <string>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 
@@ -249,7 +250,9 @@ void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {
     ImGui::BeginGroup();
     ImGui::TextUnformatted("Rotation");
     ImGui::SetNextItemWidth(-FLT_MIN);
-    changed |= ImGui::DragFloat("##rotation", &angle, 0.25f, 0.0f, 0.0f, "%.2f\xC2\xB0");
+    const bool editingAngle = ImGui::GetIO().KeyCtrl || ImGui::TempInputIsActive(ImGui::GetID("##rotation"));
+    changed |= ImGui::DragFloat("##rotation", &angle, 0.25f, 0.0f, 0.0f,
+        editingAngle ? Config::PRECISE_FORMAT : "%.3f\xC2\xB0", ImGuiSliderFlags_NoRoundToFormat);
     active |= ImGui::IsItemActive();
     ImGui::EndGroup();
 
@@ -452,10 +455,15 @@ void UiManager::drawEntryParams(const std::vector<Screen*>& selected, int index,
                 slot.label, ImGuiSliderFlags_AlwaysClamp);
             value = static_cast<float>(whole);
         } else {
+            const bool soft = DisplayModes::softLimits(entry.mode);
+            const bool editing = ImGui::GetIO().KeyCtrl || ImGui::TempInputIsActive(ImGui::GetID(id.c_str()));
+            const ImGuiSliderFlags flags = ImGuiSliderFlags_NoRoundToFormat |
+                (slot.logarithmic ? ImGuiSliderFlags_Logarithmic : 0) |
+                (soft ? 0 : ImGuiSliderFlags_AlwaysClamp);
+
             ImGui::SetNextItemWidth(-FLT_MIN);
-            const ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp |
-                (slot.logarithmic ? ImGuiSliderFlags_Logarithmic : 0);
-            changed = ImGui::SliderFloat(id.c_str(), &value, slot.minimum, slot.maximum, slot.label, flags);
+            changed = ImGui::SliderFloat(id.c_str(), &value, slot.minimum, slot.maximum,
+                editing ? Config::PRECISE_FORMAT : slot.label, flags);
         }
 
         if (!changed) continue;
