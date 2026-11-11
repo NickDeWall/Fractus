@@ -551,6 +551,47 @@ namespace DisplayModes {
         return std::max(std::abs(x), std::abs(y)) <= 1.0f;
     }
 
+    float stackDistance(const std::vector<ModeEntry>& stack, float x, float y) {
+        for (const ModeEntry& entry : stack) {
+            if (entry.muted || get(entry.mode).kind != ModeKind::Shape) continue;
+            return shapeDistance(entry, x, y);
+        }
+        return std::max(std::abs(x), std::abs(y)) - 1.0f;
+    }
+
+    int boundaryCrossings(const std::vector<ModeEntry>& stack, float dirX, float dirY, float* out, int maxOut) {
+        const int scanSteps = 24;
+        const float limit = 1.8f;
+        int found = 0;
+
+        float previousT = 1e-3f;
+        float previous = stackDistance(stack, previousT * dirX, previousT * dirY);
+
+        for (int step = 1; step <= scanSteps && found < maxOut; ++step) {
+            const float t = limit * step / scanSteps;
+            const float current = stackDistance(stack, t * dirX, t * dirY);
+
+            if ((previous <= 0.0f) != (current <= 0.0f)) {
+                float low = previousT;
+                float high = t;
+                for (int refine = 0; refine < 14; ++refine) {
+                    const float middle = (low + high) * 0.5f;
+                    if ((stackDistance(stack, middle * dirX, middle * dirY) <= 0.0f) == (previous <= 0.0f)) {
+                        low = middle;
+                    } else {
+                        high = middle;
+                    }
+                }
+                out[found++] = (low + high) * 0.5f;
+            }
+
+            previousT = t;
+            previous = current;
+        }
+
+        return found;
+    }
+
     bool reads(int mode) {
         const ModeKind kind = get(mode).kind;
         return kind == ModeKind::Source || kind == ModeKind::Sampling;

@@ -67,5 +67,7 @@ namespace DisplayModes {
     bool reads(int mode);
     float shapeDistance(const ModeEntry& entry, float x, float y);
     bool contains(const std::vector<ModeEntry>& stack, float x, float y);
+    float stackDistance(const std::vector<ModeEntry>& stack, float x, float y);
+    int boundaryCrossings(const std::vector<ModeEntry>& stack, float dirX, float dirY, float* out, int maxOut);
     std::string buildFragmentShader();
 }

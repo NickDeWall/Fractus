@@ -12,6 +12,7 @@ namespace Config {
     constexpr int OUTLINE_THICKNESS = 3;
     constexpr Uint8 OUTLINE_SCALE_INCREASE = 40;
     constexpr float OUTLINE_MIN_VALUE = 0.6f;
+    constexpr int OUTLINE_SAMPLES = 160;
 
     constexpr float SCALE_FACTOR_UP = 1.08f;
     constexpr float SCALE_FACTOR_DOWN = 0.92f;

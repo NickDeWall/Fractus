@@ -56,6 +56,16 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
 
     glGenFramebuffers(1, &fbo);
     glGenFramebuffers(1, &snapshotFbo);
+    glGenVertexArrays(1, &outlineVao);
+    glGenBuffers(1, &outlineVbo);
+    glBindVertexArray(outlineVao);
+    glBindBuffer(GL_ARRAY_BUFFER, outlineVbo);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
     
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, previousTexture, 0);
@@ -85,6 +95,8 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
 FractalManager::~FractalManager() {
     clearSnapshots();
     glDeleteProgram(screenShaderProgram);
+    glDeleteBuffers(1, &outlineVbo);
+    glDeleteVertexArrays(1, &outlineVao);
     glDeleteFramebuffers(1, &snapshotFbo);
     glDeleteTextures(1, &currentTexture);
     glDeleteTextures(1, &previousTexture);
@@ -106,23 +118,98 @@ GLuint FractalManager::createTexture(int w, int h) {
     return texture;
 }
 
+const FractalManager::OutlineCache& FractalManager::outlineGeometry(const Screen& screen) {
+    OutlineCache& cache = outlines[screen.getId()];
+    const std::vector<ModeEntry>& stack = screen.getStack();
+
+    int shape = -1;
+    float params[DisplayModes::MAX_PARAMS] = {};
+    for (const ModeEntry& entry : stack) {
+        if (entry.muted || DisplayModes::get(entry.mode).kind != ModeKind::Shape) continue;
+        shape = entry.mode;
+        std::copy(std::begin(entry.params), std::end(entry.params), std::begin(params));
+        break;
+    }
+
+    const float halfWidth = std::max(screen.getTargetWidth() * 0.5f, 1.0f);
+    const float halfHeight = std::max(screen.getTargetHeight() * 0.5f, 1.0f);
+    const bool unchanged = cache.shape == shape && cache.width == halfWidth && cache.height == halfHeight &&
+        std::equal(std::begin(params), std::end(params), std::begin(cache.params));
+    if (unchanged) return cache;
+
+    cache.shape = shape;
+    cache.width = halfWidth;
+    cache.height = halfHeight;
+    std::copy(std::begin(params), std::end(params), std::begin(cache.params));
+    cache.vertices.clear();
+    cache.strips.clear();
+
+    const int samples = Config::OUTLINE_SAMPLES;
+    const float band = Config::OUTLINE_THICKNESS * 0.5f + 2.0f;
+    std::vector<float> radii(static_cast<size_t>(samples) * 2, -1.0f);
+
+    for (int sample = 0; sample < samples; ++sample) {
+        const float angle = static_cast<float>(sample) / samples * 2.0f * static_cast<float>(Config::PI);
+        float crossings[2] = { -1.0f, -1.0f };
+        const int found = DisplayModes::boundaryCrossings(stack, std::cos(angle), std::sin(angle), crossings, 2);
+        for (int index = 0; index < found; ++index) {
+            radii[static_cast<size_t>(index) * samples + sample] = crossings[index];
+        }
+    }
+
+    for (int ring = 0; ring < 2; ++ring) {
+        bool complete = true;
+        for (int sample = 0; sample < samples; ++sample) {
+            complete = complete && radii[static_cast<size_t>(ring) * samples + sample] > 0.0f;
+        }
+        if (!complete) continue;
+
+        const size_t start = cache.vertices.size() / 4;
+        for (int sample = 0; sample <= samples; ++sample) {
+            const int here = sample % samples;
+            const int before = (here + samples - 1) % samples;
+            const int after = (here + 1) % samples;
+
+            auto point = [&](int index) {
+                const float angle = static_cast<float>(index) / samples * 2.0f * static_cast<float>(Config::PI);
+                const float radius = radii[static_cast<size_t>(ring) * samples + index];
+                return glm::vec2(std::cos(angle) * radius * halfWidth, std::sin(angle) * radius * halfHeight);
+            };
+
+            const glm::vec2 current = point(here);
+            const glm::vec2 tangent = point(after) - point(before);
+            const float length = std::max(std::sqrt(tangent.x * tangent.x + tangent.y * tangent.y), 1e-4f);
+            const glm::vec2 normal(tangent.y / length, -tangent.x / length);
+
+            for (int side = 0; side < 2; ++side) {
+                const glm::vec2 offset = current + normal * (side == 0 ? band : -band);
+                cache.vertices.push_back(offset.x);
+                cache.vertices.push_back(offset.y);
+                cache.vertices.push_back(offset.x / (halfWidth * 2.0f) + 0.5f);
+                cache.vertices.push_back(offset.y / (halfHeight * 2.0f) + 0.5f);
+            }
+        }
+        cache.strips.push_back(static_cast<int>(start));
+        cache.strips.push_back(static_cast<int>(cache.vertices.size() / 4 - start));
+    }
+
+    return cache;
+}
+
 void FractalManager::renderOutline(const Screen& screen, bool scaling, const glm::mat4& windowProjection) {
+    const OutlineCache& cache = outlineGeometry(screen);
+    if (cache.strips.empty()) return;
+
     const SDL_Color outlineColor = scaling ? screen.getScaleOutlineColor() : screen.getOutlineColor();
-    const float margin = 2.0f * Config::OUTLINE_THICKNESS;
-    const float outlineWidth = screen.getWidth() + margin;
-    const float outlineHeight = screen.getHeight() + margin;
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(screen.getX(), screen.getY(), 0.0f));
     model = glm::rotate(model, glm::radians(screen.getRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
-    model = glm::translate(model, glm::vec3(-outlineWidth / 2.0f, -outlineHeight / 2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(outlineWidth, outlineHeight, 1.0f));
 
     glUseProgram(screenShaderProgram);
     glUniform1i(glGetUniformLocation(screenShaderProgram, "overlay"), 2);
     glUniform1f(glGetUniformLocation(screenShaderProgram, "aspect"), static_cast<float>(width) / height);
-    glUniform2f(glGetUniformLocation(screenShaderProgram, "planeScale"),
-        outlineWidth / std::max(screen.getWidth(), 1), outlineHeight / std::max(screen.getHeight(), 1));
+    glUniform2f(glGetUniformLocation(screenShaderProgram, "planeScale"), 1.0f, 1.0f);
     uploadStack(screen);
 
     glUniformMatrix4fv(glGetUniformLocation(screenShaderProgram, "projection"), 1, GL_FALSE, &windowProjection[0][0]);
@@ -130,8 +217,13 @@ void FractalManager::renderOutline(const Screen& screen, bool scaling, const glm
     glUniform4f(glGetUniformLocation(screenShaderProgram, "color"),
         outlineColor.r / 255.0f, outlineColor.g / 255.0f, outlineColor.b / 255.0f, outlineColor.a / 255.0f);
 
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(outlineVao);
+    glBindBuffer(GL_ARRAY_BUFFER, outlineVbo);
+    glBufferData(GL_ARRAY_BUFFER, cache.vertices.size() * sizeof(float), cache.vertices.data(), GL_STREAM_DRAW);
+    for (size_t strip = 0; strip + 1 < cache.strips.size(); strip += 2) {
+        glDrawArrays(GL_TRIANGLE_STRIP, cache.strips[strip], cache.strips[strip + 1]);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glUseProgram(0);
 }

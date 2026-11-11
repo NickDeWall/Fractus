@@ -51,7 +51,17 @@ private:
     void updateDelayed(const Screen& screen, double time);
     void historySize(const Screen& screen, int& outW, int& outH) const;
     void storeFrame(Frame& destination, GLuint source, int sourceW, int sourceH, int w, int h);
+    struct OutlineCache {
+        std::vector<float> vertices;
+        std::vector<int> strips;
+        int shape = -2;
+        float params[DisplayModes::MAX_PARAMS] = {};
+        float width = 0.0f;
+        float height = 0.0f;
+    };
+
     void uploadStack(const Screen& screen);
+    const OutlineCache& outlineGeometry(const Screen& screen);
     void copyFrame(GLuint source, int sourceW, int sourceH, GLuint destination, int destinationW, int destinationH);
     void deleteDelayState(DelayState& state);
     void clearSnapshots();
@@ -76,6 +86,8 @@ private:
     std::vector<GLuint> spareTextures;
     std::unordered_map<int, DelayState> delayed;
     GLuint vao, vbo;
+    GLuint outlineVao, outlineVbo;
+    std::unordered_map<int, OutlineCache> outlines;
 };
 
 namespace OtherRenders {
