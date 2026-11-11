@@ -32,11 +32,13 @@ private:
     bool rotationEditing = false;
     float rotationBaseAngle = 0.0f;
     std::unordered_map<int, float> rotationBaseline;
+    std::unordered_map<int, SDL_FPoint> rotationOrigins;
+    SDL_FPoint rotationCenter = { 0.0f, 0.0f };
 
     void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawProportions(ScreenManager& screenManager, const std::vector<Screen*>& selected);
-    void drawRotationControl(const std::vector<Screen*>& selected);
+    void drawRotationControl(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawRateSlider(const std::vector<Screen*>& selected);
     void drawDelaySlider(const std::vector<Screen*>& selected);
     void drawModeBrowser(const std::vector<Screen*>& selected);

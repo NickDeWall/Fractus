@@ -34,6 +34,7 @@ public:
     int getWidth() const;
     int getHeight() const;
     float getRotation() const;
+    float getAngularVelocity() const;
     void getColorF(float& r, float& g, float& b, float& a) const;
     float getHue() const;
     float getSaturation() const;
@@ -54,6 +55,8 @@ public:
     SDL_FPoint getRotatedSize() const;
     void startScale(float width, float height);
     void moveTo(float x, float y);
+    void orbit(float centerX, float centerY, float degrees);
+    void scaleAbout(float centerX, float centerY, float factor);
     void update(float dt, float targetVelocity);
 
 private:

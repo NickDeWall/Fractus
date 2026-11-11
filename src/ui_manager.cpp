@@ -103,6 +103,18 @@ void UiManager::render(ScreenManager& screenManager) {
         drawScreenMenu(screenManager, selected);
     }
 
+    if (screenManager.isBoxSelecting()) {
+        const SDL_FPoint start = screenManager.getBoxStart();
+        const SDL_FPoint end = screenManager.getBoxEnd();
+        const ImVec2 corner(std::min(start.x, end.x), std::min(start.y, end.y));
+        const ImVec2 opposite(std::max(start.x, end.x), std::max(start.y, end.y));
+
+        const SDL_Color tint = Config::BOX_SELECT_COLOR;
+        ImDrawList* draw = ImGui::GetBackgroundDrawList();
+        draw->AddRectFilled(corner, opposite, IM_COL32(tint.r, tint.g, tint.b, Config::BOX_SELECT_FILL_ALPHA));
+        draw->AddRect(corner, opposite, IM_COL32(tint.r, tint.g, tint.b, Config::BOX_SELECT_EDGE_ALPHA));
+    }
+
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -137,7 +149,7 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
 
         drawSizeSlider(screenManager, selected);
         ImGui::Spacing();
-        drawRotationControl(selected);
+        drawRotationControl(screenManager, selected);
         ImGui::Spacing();
         drawRateSlider(selected);
         drawDelaySlider(selected);
@@ -232,15 +244,18 @@ void UiManager::drawProportions(ScreenManager& screenManager, const std::vector<
     ImGui::TreePop();
 }
 
-void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {
+void UiManager::drawRotationControl(ScreenManager& screenManager, const std::vector<Screen*>& selected) {
     float angle = wrapDegrees(selected.front()->getRotation());
 
     if (!rotationEditing) {
         rotationBaseAngle = angle;
         rotationBaseline.clear();
+        rotationOrigins.clear();
         for (Screen* screen : selected) {
             rotationBaseline[screen->getId()] = screen->getRotation();
+            rotationOrigins[screen->getId()] = { screen->getTargetX(), screen->getTargetY() };
         }
+        rotationCenter = screenManager.selectionCenter();
     }
 
     bool changed = rotationDial("##rotationDial", angle, 28.0f);
@@ -256,14 +271,37 @@ void UiManager::drawRotationControl(const std::vector<Screen*>& selected) {
     active |= ImGui::IsItemActive();
     ImGui::EndGroup();
 
+    if (selected.size() > 1) {
+        bool pivot = screenManager.getGroupPivot();
+        if (ImGui::Checkbox("Rotate and scale as a group", &pivot)) {
+            screenManager.setGroupPivot(pivot);
+        }
+    }
+
     rotationEditing = active;
     if (!changed) return;
 
     const float delta = angle - rotationBaseAngle;
+    const bool pivot = screenManager.usesGroupPivot();
+    const float radians = delta * static_cast<float>(Config::PI) / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+
     for (Screen* screen : selected) {
         const auto base = rotationBaseline.find(screen->getId());
         if (base == rotationBaseline.end()) continue;
         screen->setRotation(wrapDegrees(base->second + delta));
+
+        if (!pivot) continue;
+        const auto origin = rotationOrigins.find(screen->getId());
+        if (origin == rotationOrigins.end()) continue;
+
+        const float offsetX = origin->second.x - rotationCenter.x;
+        const float offsetY = origin->second.y - rotationCenter.y;
+        const float placedX = rotationCenter.x + offsetX * cosine - offsetY * sine;
+        const float placedY = rotationCenter.y + offsetX * sine + offsetY * cosine;
+        screen->setX(placedX);
+        screen->setY(placedY);
     }
 }
 

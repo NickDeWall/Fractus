@@ -120,6 +120,10 @@ float Screen::getRotation() const {
     return rotation;
 }
 
+float Screen::getAngularVelocity() const {
+    return angularVelocity;
+}
+
 void Screen::getColorF(float& r, float& g, float& b, float& a) const {
     MathUtils::hsvToRgb(hue, saturation, value, r, g, b);
     r /= 255.0f;
@@ -219,6 +223,29 @@ void Screen::startScale(float width, float height) {
 void Screen::moveTo(float x, float y) {
     targetX = x;
     targetY = y;
+}
+
+void Screen::orbit(float centerX, float centerY, float degrees) {
+    const float radians = degrees * static_cast<float>(Config::PI) / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+
+    const float currentX = xCoord - centerX;
+    const float currentY = yCoord - centerY;
+    xCoord = centerX + currentX * cosine - currentY * sine;
+    yCoord = centerY + currentX * sine + currentY * cosine;
+
+    const float aimX = targetX - centerX;
+    const float aimY = targetY - centerY;
+    targetX = centerX + aimX * cosine - aimY * sine;
+    targetY = centerY + aimX * sine + aimY * cosine;
+}
+
+void Screen::scaleAbout(float centerX, float centerY, float factor) {
+    xCoord = centerX + (xCoord - centerX) * factor;
+    yCoord = centerY + (yCoord - centerY) * factor;
+    targetX = centerX + (targetX - centerX) * factor;
+    targetY = centerY + (targetY - centerY) * factor;
 }
 
 void Screen::update(float dt, float targetVelocity) {

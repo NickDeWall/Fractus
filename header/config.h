@@ -13,6 +13,11 @@ namespace Config {
     constexpr Uint8 OUTLINE_SCALE_INCREASE = 40;
     constexpr float OUTLINE_MIN_VALUE = 0.6f;
     constexpr int OUTLINE_SAMPLES = 160;
+    constexpr float BOX_SELECT_MIN_SIZE = 4.0f;
+    constexpr float CLICK_SLOP = 3.0f;
+    constexpr SDL_Color BOX_SELECT_COLOR = { 150, 195, 255, 0 };
+    constexpr Uint8 BOX_SELECT_FILL_ALPHA = 12;
+    constexpr Uint8 BOX_SELECT_EDGE_ALPHA = 80;
 
     constexpr float SCALE_FACTOR_UP = 1.08f;
     constexpr float SCALE_FACTOR_DOWN = 0.92f;

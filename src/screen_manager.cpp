@@ -8,7 +8,11 @@
 #include "config.h"
 
 ScreenManager::ScreenManager(int width, int height)
-    : nextId(0), width(width), height(height) {
+    : primaryId(-1), nextId(0), boxActive(false), draggingScreens(false), dragMoved(false),
+      pressedId(-1), groupPivot(false), width(width), height(height) {
+    pressPos = { 0, 0 };
+    boxStart = { 0, 0 };
+    boxEnd = { 0, 0 };
     lastMousePos = { 0, 0 };
 }
 
@@ -20,22 +24,182 @@ void ScreenManager::createScreen(SDL_FPoint pos) {
         Config::DEFAULT_SCREEN_COLOR);
 }
 
-void ScreenManager::handleSelection(SDL_FPoint mousePos) {
+void ScreenManager::selectOnly(int id) {
     selectedIds.clear();
-    lastMousePos = mousePos;
-    if (Screen* hit = findScreenAtPosition(mousePos.x, mousePos.y)) {
-        selectedIds.insert(hit->getId());
+    selectedIds.insert(id);
+    primaryId = id;
+}
+
+void ScreenManager::refreshPrimary() {
+    if (selectedIds.count(primaryId) > 0) return;
+    primaryId = selectedIds.empty() ? -1 : *selectedIds.begin();
+}
+
+SDL_FPoint ScreenManager::selectionCenter() const {
+    float sumX = 0.0f;
+    float sumY = 0.0f;
+    int count = 0;
+
+    for (const auto& screen : screens) {
+        if (!isSelected(screen)) continue;
+        sumX += screen.getX();
+        sumY += screen.getY();
+        ++count;
     }
+
+    if (count == 0) return { 0.0f, 0.0f };
+    return { sumX / count, sumY / count };
+}
+
+bool ScreenManager::screenOverlapsBox(const Screen& screen, SDL_FPoint corner, SDL_FPoint opposite) {
+    const float boxHalfWidth = (opposite.x - corner.x) * 0.5f;
+    const float boxHalfHeight = (opposite.y - corner.y) * 0.5f;
+    const float deltaX = screen.getX() - (corner.x + boxHalfWidth);
+    const float deltaY = screen.getY() - (corner.y + boxHalfHeight);
+
+    const float halfWidth = screen.getWidth() * 0.5f;
+    const float halfHeight = screen.getHeight() * 0.5f;
+    const float radians = screen.getRotation() * static_cast<float>(Config::PI) / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+
+    const SDL_FPoint axes[4] = {
+        { 1.0f, 0.0f },
+        { 0.0f, 1.0f },
+        { cosine, sine },
+        { -sine, cosine }
+    };
+
+    for (const SDL_FPoint& axis : axes) {
+        const float boxReach = boxHalfWidth * std::abs(axis.x) + boxHalfHeight * std::abs(axis.y);
+        const float screenReach = halfWidth * std::abs(axis.x * cosine + axis.y * sine) +
+            halfHeight * std::abs(axis.x * -sine + axis.y * cosine);
+        if (std::abs(deltaX * axis.x + deltaY * axis.y) > boxReach + screenReach) return false;
+    }
+
+    return true;
+}
+
+void ScreenManager::applyBox() {
+    selectedIds = boxBase;
+
+    const SDL_FPoint corner = { std::min(boxStart.x, boxEnd.x), std::min(boxStart.y, boxEnd.y) };
+    const SDL_FPoint opposite = { std::max(boxStart.x, boxEnd.x), std::max(boxStart.y, boxEnd.y) };
+
+    if (opposite.x - corner.x >= Config::BOX_SELECT_MIN_SIZE ||
+        opposite.y - corner.y >= Config::BOX_SELECT_MIN_SIZE) {
+        for (const auto& screen : screens) {
+            if (!screenOverlapsBox(screen, corner, opposite)) continue;
+            selectedIds.insert(screen.getId());
+            if (selectedIds.count(primaryId) == 0) primaryId = screen.getId();
+        }
+    }
+
+    refreshPrimary();
+}
+
+void ScreenManager::handleSelection(SDL_FPoint mousePos, bool additive) {
+    lastMousePos = mousePos;
+    pressPos = mousePos;
+    boxActive = false;
+    draggingScreens = false;
+    dragMoved = false;
+    pressedId = -1;
+
+    Screen* hit = findScreenAtPosition(mousePos.x, mousePos.y);
+    if (hit == nullptr) {
+        if (!additive) {
+            clearSelection();
+            return;
+        }
+        boxActive = true;
+        boxBase = selectedIds;
+        boxStart = mousePos;
+        boxEnd = mousePos;
+        return;
+    }
+
+    const int id = hit->getId();
+    pressedId = id;
+
+    if (additive) {
+        if (selectedIds.count(id) > 0) {
+            selectedIds.erase(id);
+            refreshPrimary();
+            return;
+        }
+        selectedIds.insert(id);
+        primaryId = id;
+    } else if (selectedIds.count(id) == 0) {
+        selectOnly(id);
+    } else {
+        primaryId = id;
+    }
+
+    draggingScreens = true;
+}
+
+void ScreenManager::handleDeleteClick(SDL_FPoint mousePos) {
+    Screen* hit = findScreenAtPosition(mousePos.x, mousePos.y);
+    if (hit == nullptr) {
+        clearSelection();
+        return;
+    }
+
+    if (selectedIds.count(hit->getId()) == 0) selectOnly(hit->getId());
+    deleteSelected();
+}
+
+void ScreenManager::updatePointer(SDL_FPoint mousePos, bool enabled) {
+    const float dx = mousePos.x - lastMousePos.x;
+    const float dy = mousePos.y - lastMousePos.y;
+    lastMousePos = mousePos;
+
+    if (std::abs(mousePos.x - pressPos.x) > Config::CLICK_SLOP ||
+        std::abs(mousePos.y - pressPos.y) > Config::CLICK_SLOP) {
+        dragMoved = true;
+    }
+
+    if (boxActive) {
+        boxEnd = mousePos;
+        applyBox();
+        return;
+    }
+
+    if (!enabled || !draggingScreens) return;
+    if (!(SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) return;
+
+    for (Screen* screen : getSelectedScreens()) {
+        screen->moveTo(screen->getTargetX() + dx, screen->getTargetY() + dy);
+    }
+}
+
+void ScreenManager::endSelection(SDL_FPoint mousePos, bool additive) {
+    const bool collapse = draggingScreens && !additive && !dragMoved &&
+        pressedId >= 0 && selectedIds.size() > 1;
+
+    draggingScreens = false;
+
+    if (boxActive) {
+        boxActive = false;
+        boxEnd = mousePos;
+        applyBox();
+        boxBase.clear();
+        return;
+    }
+
+    if (collapse) selectOnly(pressedId);
 }
 
 void ScreenManager::clearSelection() {
     selectedIds.clear();
+    primaryId = -1;
 }
 
 void ScreenManager::deleteSelected() {
     screens.erase(std::remove_if(screens.begin(), screens.end(),
         [this](const Screen& s) { return isSelected(s); }), screens.end());
-    selectedIds.clear();
+    clearSelection();
 }
 
 bool ScreenManager::isSelected(const Screen& screen) const {
@@ -44,11 +208,15 @@ bool ScreenManager::isSelected(const Screen& screen) const {
 
 std::vector<Screen*> ScreenManager::getSelectedScreens() {
     std::vector<Screen*> selected;
+    Screen* primary = nullptr;
+
     for (auto& screen : screens) {
-        if (isSelected(screen)) {
-            selected.push_back(&screen);
-        }
+        if (!isSelected(screen)) continue;
+        if (screen.getId() == primaryId) primary = &screen;
+        else selected.push_back(&screen);
     }
+
+    if (primary != nullptr) selected.insert(selected.begin(), primary);
     return selected;
 }
 
@@ -90,27 +258,18 @@ Screen* ScreenManager::selectSmallestFromCandidates(const std::vector<Screen*>& 
         });
 }
 
-void ScreenManager::handleDragging(SDL_FPoint mousePos, bool enabled) {
-    const float dx = mousePos.x - lastMousePos.x;
-    const float dy = mousePos.y - lastMousePos.y;
-    lastMousePos = mousePos;
-
-    if (!enabled || !(SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON_LMASK)) return;
-
-    for (Screen* screen : getSelectedScreens()) {
-        screen->moveTo(screen->getTargetX() + dx, screen->getTargetY() + dy);
-    }
-}
-
 void ScreenManager::handleScaling(int scrollY) {
     if (!scrollY) return;
 
     const float scaleFactor = (scrollY > 0) ? Config::SCALE_FACTOR_UP : Config::SCALE_FACTOR_DOWN;
+    const bool pivot = usesGroupPivot();
+    const SDL_FPoint center = pivot ? selectionCenter() : SDL_FPoint{ 0.0f, 0.0f };
 
     for (Screen* screen : getSelectedScreens()) {
         const SDL_FPoint size = clampSize(screen->getTargetWidth() * scaleFactor,
             screen->getTargetHeight() * scaleFactor);
         screen->startScale(size.x, size.y);
+        if (pivot) screen->scaleAbout(center.x, center.y, scaleFactor);
     }
 }
 
@@ -167,9 +326,17 @@ SDL_FPoint ScreenManager::clampSize(float screenWidth, float screenHeight) const
 }
 
 void ScreenManager::update(float dt, int rotateInput) {
+    const bool pivot = usesGroupPivot();
+    const SDL_FPoint center = pivot ? selectionCenter() : SDL_FPoint{ 0.0f, 0.0f };
+
     for (auto& screen : screens) {
-        const float target = isSelected(screen) ? rotateInput * Config::ROTATION_SPEED : 0.0f;
+        const bool selected = isSelected(screen);
+        const float target = selected ? rotateInput * Config::ROTATION_SPEED : 0.0f;
         screen.update(dt, target);
+
+        if (!pivot || !selected) continue;
+        const float degrees = screen.getAngularVelocity() * dt;
+        if (degrees != 0.0f) screen.orbit(center.x, center.y, degrees);
     }
 }
 

@@ -11,11 +11,21 @@ public:
     ScreenManager(int width, int height);
 
     void createScreen(SDL_FPoint pos);
-    void handleSelection(SDL_FPoint mousePos);
+    void handleSelection(SDL_FPoint mousePos, bool additive);
+    void handleDeleteClick(SDL_FPoint mousePos);
+    void updatePointer(SDL_FPoint mousePos, bool enabled);
+    void endSelection(SDL_FPoint mousePos, bool additive);
     void clearSelection();
     void deleteSelected();
-    void handleDragging(SDL_FPoint mousePos, bool enabled);
     void handleScaling(int scrollY);
+
+    bool isBoxSelecting() const { return boxActive; }
+    SDL_FPoint getBoxStart() const { return boxStart; }
+    SDL_FPoint getBoxEnd() const { return boxEnd; }
+    void setGroupPivot(bool enabled) { groupPivot = enabled; }
+    bool getGroupPivot() const { return groupPivot; }
+    bool usesGroupPivot() const { return groupPivot && selectedIds.size() > 1; }
+    SDL_FPoint selectionCenter() const;
     void update(float dt, int rotateInput);
     void resize(int newWidth, int newHeight);
 
@@ -33,7 +43,17 @@ public:
 private:
     std::vector<Screen> screens;
     std::unordered_set<int> selectedIds;
+    int primaryId;
     int nextId;
+    bool boxActive;
+    bool draggingScreens;
+    bool dragMoved;
+    int pressedId;
+    std::unordered_set<int> boxBase;
+    SDL_FPoint pressPos;
+    bool groupPivot;
+    SDL_FPoint boxStart;
+    SDL_FPoint boxEnd;
     SDL_FPoint lastMousePos;
     SDL_FPoint stretchStart;
     std::unordered_map<int, SDL_FPoint> stretchBaseline;
@@ -41,6 +61,10 @@ private:
     int height;
 
     Screen* findScreenAtPosition(float x, float y) const;
+    void selectOnly(int id);
+    void applyBox();
+    static bool screenOverlapsBox(const Screen& screen, SDL_FPoint corner, SDL_FPoint opposite);
+    void refreshPrimary();
     Screen* selectSmallestFromCandidates(const std::vector<Screen*>& candidates) const;
 
     static bool pointInScreen(float px, float py, const Screen& screen);

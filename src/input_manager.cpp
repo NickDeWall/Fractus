@@ -325,6 +325,12 @@ bool InputManager::handleEvents() {
                 handleMouseClick(event.button);
             }
             break;
+        case SDL_MOUSEBUTTONUP:
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                screenManager->endSelection({ static_cast<float>(event.button.x), static_cast<float>(event.button.y) },
+                    (SDL_GetModState() & KMOD_CTRL) != 0);
+            }
+            break;
         case SDL_MOUSEWHEEL:
             if (!scalingMode && !ui->wantsMouse()) {
                 screenManager->handleScaling(event.wheel.y);
@@ -418,17 +424,18 @@ void InputManager::handleExitScaling(const SDL_Event& event) {
 
 void InputManager::handleMouseClick(const SDL_MouseButtonEvent& event) {
     SDL_FPoint pos = { static_cast<float>(event.x), static_cast<float>(event.y) };
+    const bool additive = (SDL_GetModState() & KMOD_CTRL) != 0;
+
     switch (event.button) {
     case SDL_BUTTON_LEFT:
-        screenManager->handleSelection(pos);
+        screenManager->handleSelection(pos, additive);
         break;
     case SDL_BUTTON_MIDDLE:
         screenManager->createScreen(pos);
-        screenManager->handleSelection(pos);
+        screenManager->handleSelection(pos, false);
         break;
     case SDL_BUTTON_RIGHT:
-        screenManager->handleSelection(pos);
-        screenManager->deleteSelected();
+        screenManager->handleDeleteClick(pos);
         break;
     }
 }
@@ -483,7 +490,7 @@ void InputManager::update() {
         if (scalingMode) {
             screenManager->updateStretch(mousePos);
         }
-        screenManager->handleDragging(mousePos, !scalingMode && !ui->wantsMouse());
+        screenManager->updatePointer(mousePos, !scalingMode && !ui->wantsMouse());
         screenManager->update(deltaTime, rotateInput);
         elapsedTime += deltaTime;
         currentFrame = fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
