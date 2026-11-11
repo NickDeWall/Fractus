@@ -121,6 +121,7 @@ GLuint FractalManager::createTexture(int w, int h) {
 const FractalManager::OutlineCache& FractalManager::outlineGeometry(const Screen& screen) {
     OutlineCache& cache = outlines[screen.getId()];
     const std::vector<ModeEntry>& stack = screen.getStack();
+    const int samples = Config::OUTLINE_SAMPLES;
 
     int shape = -1;
     float params[DisplayModes::MAX_PARAMS] = {};
@@ -131,36 +132,37 @@ const FractalManager::OutlineCache& FractalManager::outlineGeometry(const Screen
         break;
     }
 
-    const float halfWidth = std::max(screen.getTargetWidth() * 0.5f, 1.0f);
-    const float halfHeight = std::max(screen.getTargetHeight() * 0.5f, 1.0f);
-    const bool unchanged = cache.shape == shape && cache.width == halfWidth && cache.height == halfHeight &&
-        std::equal(std::begin(params), std::end(params), std::begin(cache.params));
-    if (unchanged) return cache;
+    if (cache.shape != shape || !std::equal(std::begin(params), std::end(params), std::begin(cache.params))) {
+        cache.shape = shape;
+        std::copy(std::begin(params), std::end(params), std::begin(cache.params));
+        cache.width = 0.0f;
+        cache.radii.assign(static_cast<size_t>(samples) * 2, -1.0f);
 
-    cache.shape = shape;
+        for (int sample = 0; sample < samples; ++sample) {
+            const float angle = static_cast<float>(sample) / samples * 2.0f * static_cast<float>(Config::PI);
+            float crossings[2] = { -1.0f, -1.0f };
+            const int found = DisplayModes::boundaryCrossings(stack, std::cos(angle), std::sin(angle), crossings, 2);
+            for (int index = 0; index < found; ++index) {
+                cache.radii[static_cast<size_t>(index) * samples + sample] = crossings[index];
+            }
+        }
+    }
+
+    const float halfWidth = std::max(screen.getWidth() * 0.5f, 1.0f);
+    const float halfHeight = std::max(screen.getHeight() * 0.5f, 1.0f);
+    if (cache.width == halfWidth && cache.height == halfHeight) return cache;
+
     cache.width = halfWidth;
     cache.height = halfHeight;
-    std::copy(std::begin(params), std::end(params), std::begin(cache.params));
     cache.vertices.clear();
     cache.strips.clear();
 
-    const int samples = Config::OUTLINE_SAMPLES;
     const float band = Config::OUTLINE_THICKNESS * 0.5f + 2.0f;
-    std::vector<float> radii(static_cast<size_t>(samples) * 2, -1.0f);
-
-    for (int sample = 0; sample < samples; ++sample) {
-        const float angle = static_cast<float>(sample) / samples * 2.0f * static_cast<float>(Config::PI);
-        float crossings[2] = { -1.0f, -1.0f };
-        const int found = DisplayModes::boundaryCrossings(stack, std::cos(angle), std::sin(angle), crossings, 2);
-        for (int index = 0; index < found; ++index) {
-            radii[static_cast<size_t>(index) * samples + sample] = crossings[index];
-        }
-    }
 
     for (int ring = 0; ring < 2; ++ring) {
         bool complete = true;
         for (int sample = 0; sample < samples; ++sample) {
-            complete = complete && radii[static_cast<size_t>(ring) * samples + sample] > 0.0f;
+            complete = complete && cache.radii[static_cast<size_t>(ring) * samples + sample] > 0.0f;
         }
         if (!complete) continue;
 
@@ -172,7 +174,7 @@ const FractalManager::OutlineCache& FractalManager::outlineGeometry(const Screen
 
             auto point = [&](int index) {
                 const float angle = static_cast<float>(index) / samples * 2.0f * static_cast<float>(Config::PI);
-                const float radius = radii[static_cast<size_t>(ring) * samples + index];
+                const float radius = cache.radii[static_cast<size_t>(ring) * samples + index];
                 return glm::vec2(std::cos(angle) * radius * halfWidth, std::sin(angle) * radius * halfHeight);
             };
 

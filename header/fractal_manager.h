@@ -52,6 +52,7 @@ private:
     void historySize(const Screen& screen, int& outW, int& outH) const;
     void storeFrame(Frame& destination, GLuint source, int sourceW, int sourceH, int w, int h);
     struct OutlineCache {
+        std::vector<float> radii;
         std::vector<float> vertices;
         std::vector<int> strips;
         int shape = -2;
