@@ -1,7 +1,7 @@
 #pragma once
 #include <SDL2/SDL.h>
-#include "config.h"
-#include "display_modes.h"
+#include "core/config.h"
+#include "render/display_modes.h"
 #include <vector>
 
 class Screen {

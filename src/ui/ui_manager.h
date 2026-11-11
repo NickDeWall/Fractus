@@ -2,7 +2,7 @@
 #include <SDL2/SDL.h>
 #include <vector>
 #include <unordered_map>
-#include "display_modes.h"
+#include "render/display_modes.h"
 
 class Screen;
 class ScreenManager;

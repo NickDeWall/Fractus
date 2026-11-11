@@ -1,7 +1,7 @@
-#include "fractal_manager.h"
-#include "math_utils.h"
-#include "shader_manager.h"
-#include "display_modes.h"
+#include "render/fractal_manager.h"
+#include "util/math_utils.h"
+#include "render/shader_manager.h"
+#include "render/display_modes.h"
 #include <stdexcept>
 #include <string>
 #include <algorithm>
@@ -14,6 +14,17 @@
 #include <string>
 
 namespace {
+    const char* COMPOSITE_FRAGMENT_SHADER = R"(
+        #version 330 core
+        in vec2 vTexCoord;
+        uniform sampler2D tex;
+        uniform vec4 color;
+        out vec4 fragColor;
+        void main() {
+            fragColor = texture(tex, vTexCoord) * color;
+        }
+    )";
+
     const char* SCREEN_VERTEX_SHADER = R"(
         #version 330 core
         layout(location = 0) in vec2 pos;
@@ -41,13 +52,14 @@ void FractalManager::computeRenderSize(int w, int h, int& outW, int& outH) {
     }
 }
 
-FractalManager::FractalManager(int width, int height, GLuint textureShader, GLuint colorShader, const glm::mat4& projection)
-    : width(width), height(height), textureShaderProgram(textureShader), colorShaderProgram(colorShader) {
+FractalManager::FractalManager(int width, int height, const glm::mat4& projection)
+    : width(width), height(height) {
     computeRenderSize(width, height, renderWidth, renderHeight);
     currentTexture = createTexture(renderWidth, renderHeight);
     previousTexture = createTexture(renderWidth, renderHeight);
     
     this->projection = projection;
+    compositeShaderProgram = ShaderManager::createShaderProgram(SCREEN_VERTEX_SHADER, COMPOSITE_FRAGMENT_SHADER);
     const std::string fragmentShader = DisplayModes::buildFragmentShader();
     screenShaderProgram = ShaderManager::createShaderProgram(SCREEN_VERTEX_SHADER, fragmentShader.c_str());
     if (screenShaderProgram == 0) {
@@ -95,6 +107,7 @@ FractalManager::FractalManager(int width, int height, GLuint textureShader, GLui
 FractalManager::~FractalManager() {
     clearSnapshots();
     glDeleteProgram(screenShaderProgram);
+    glDeleteProgram(compositeShaderProgram);
     glDeleteBuffers(1, &outlineVbo);
     glDeleteVertexArrays(1, &outlineVao);
     glDeleteFramebuffers(1, &snapshotFbo);
@@ -528,7 +541,7 @@ void FractalManager::resize(int newWidth, int newHeight, const glm::mat4& newPro
     GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
     glDisable(GL_BLEND);
 
-    glUseProgram(textureShaderProgram);
+    glUseProgram(compositeShaderProgram);
 
     glm::mat4 blitProjection = glm::ortho(0.0f, static_cast<float>(newRenderWidth),
                                           static_cast<float>(newRenderHeight), 0.0f, -1.0f, 1.0f);
@@ -536,10 +549,10 @@ void FractalManager::resize(int newWidth, int newHeight, const glm::mat4& newPro
                                  glm::vec3(static_cast<float>(newRenderWidth),
                                            static_cast<float>(newRenderHeight), 1.0f));
 
-    GLint projLoc = glGetUniformLocation(textureShaderProgram, "projection");
-    GLint modelLoc = glGetUniformLocation(textureShaderProgram, "model");
-    GLint texLoc = glGetUniformLocation(textureShaderProgram, "tex");
-    GLint colorLoc = glGetUniformLocation(textureShaderProgram, "color");
+    GLint projLoc = glGetUniformLocation(compositeShaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(compositeShaderProgram, "model");
+    GLint texLoc = glGetUniformLocation(compositeShaderProgram, "tex");
+    GLint colorLoc = glGetUniformLocation(compositeShaderProgram, "color");
 
     if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &blitProjection[0][0]);
     if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
@@ -576,13 +589,13 @@ void FractalManager::renderCurrentFrame() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glUseProgram(textureShaderProgram);
+    glUseProgram(compositeShaderProgram);
     
     glm::mat4 model = glm::scale(glm::mat4(1.0f), glm::vec3(width, height, 1.0f));
-    GLint projLoc = glGetUniformLocation(textureShaderProgram, "projection");
-    GLint modelLoc = glGetUniformLocation(textureShaderProgram, "model");
-    GLint texLoc = glGetUniformLocation(textureShaderProgram, "tex");
-    GLint colorLoc = glGetUniformLocation(textureShaderProgram, "color");
+    GLint projLoc = glGetUniformLocation(compositeShaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(compositeShaderProgram, "model");
+    GLint texLoc = glGetUniformLocation(compositeShaderProgram, "tex");
+    GLint colorLoc = glGetUniformLocation(compositeShaderProgram, "color");
     
     if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, &projection[0][0]);
     if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
@@ -596,197 +609,4 @@ void FractalManager::renderCurrentFrame() {
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glBindVertexArray(0);
     glUseProgram(0);
-}
-
-namespace OtherRenders {
-    void initGL(int width, int height, GLuint& vao, GLuint& vbo) {
-        glViewport(0, 0, width, height);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE);
-
-        float vertices[] = {
-            0.0f, 0.0f, 0.0f, 0.0f,
-            1.0f, 0.0f, 1.0f, 0.0f,
-            1.0f, 1.0f, 1.0f, 1.0f,
-            0.0f, 1.0f, 0.0f, 1.0f 
-        };
-        glGenVertexArrays(1, &vao);
-        glGenBuffers(1, &vbo);
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
-
-    void cleanupGL(GLuint& vao, GLuint& vbo) {
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
-    }
-
-    bool initFPSTexture(GLuint& fpsTexture) {
-        glGenTextures(1, &fpsTexture);
-        glBindTexture(GL_TEXTURE_2D, fpsTexture);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        
-        unsigned char emptyPixels[4] = {0, 0, 0, 0};
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, emptyPixels);
-        
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return true;
-    }
-
-    bool updateFPSTexture(int fps, TTF_Font* font, GLuint& fpsTexture, int& outWidth, int& outHeight) {
-        if (!font) return false;
-        
-        std::string fpsText = std::to_string(fps);
-        SDL_Surface* surface = TTF_RenderText_Blended(font, fpsText.c_str(), Config::FPS_TEXT_COLOR);
-        if (!surface) return false;
-        
-        SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
-        SDL_FreeSurface(surface);
-        
-        if (!rgbaSurface) return false;
-        
-        glBindTexture(GL_TEXTURE_2D, fpsTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbaSurface->w, rgbaSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaSurface->pixels);
-        
-        outWidth = rgbaSurface->w;
-        outHeight = rgbaSurface->h;
-        SDL_FreeSurface(rgbaSurface);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return true;
-    }
-
-    void renderFPS(int screenWidth, int screenHeight, GLuint fpsTexture, int fpsWidth, int fpsHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao) {
-        GLboolean blendEnabled = glIsEnabled(GL_BLEND);
-        GLint srcBlend, dstBlend;
-        glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcBlend);
-        glGetIntegerv(GL_BLEND_DST_ALPHA, &dstBlend);
-        
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDisable(GL_DEPTH_TEST);
-                
-        glUseProgram(textureShaderProgram);
-        
-        float x = static_cast<float>(screenWidth - fpsWidth);
-        float y = 0.0f;
-                
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
-        model = glm::scale(model, glm::vec3(fpsWidth, fpsHeight, 1.0f));
-        
-        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
-        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glUniform4f(glGetUniformLocation(textureShaderProgram, "color"), 1.0f, 1.0f, 1.0f, 1.0f);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, fpsTexture);
-        glUniform1i(glGetUniformLocation(textureShaderProgram, "tex"), 0);
-        
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        
-        glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glUseProgram(0);
-        
-        if (!blendEnabled) {
-            glDisable(GL_BLEND);
-        } else {
-            glBlendFunc(srcBlend, dstBlend);
-        }
-    }
-
-    bool initDebugTexture(GLuint& debugTexture) {
-        glGenTextures(1, &debugTexture);
-        glBindTexture(GL_TEXTURE_2D, debugTexture);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        unsigned char emptyPixels[4] = {0, 0, 0, 0};
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, emptyPixels);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return true;
-    }
-
-    bool updateDebugTexture(const std::string& debugText, TTF_Font* font, GLuint& debugTexture, int& outWidth, int& outHeight) {
-        if (!font || debugText.empty()) {
-            outWidth = 0;
-            outHeight = 0;
-            return false;
-        }
-
-        SDL_Surface* surface = TTF_RenderText_Blended(font, debugText.c_str(), Config::FPS_TEXT_COLOR);
-        if (!surface) return false;
-
-        SDL_Surface* rgbaSurface = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
-        SDL_FreeSurface(surface);
-
-        if (!rgbaSurface) return false;
-
-        glBindTexture(GL_TEXTURE_2D, debugTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbaSurface->w, rgbaSurface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaSurface->pixels);
-
-        outWidth = rgbaSurface->w;
-        outHeight = rgbaSurface->h;
-        SDL_FreeSurface(rgbaSurface);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return true;
-    }
-
-    void renderDebugText(int screenWidth, int screenHeight, GLuint debugTexture, int debugWidth, int debugHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao) {
-        if (debugWidth == 0 || debugHeight == 0) return;
-
-        GLboolean blendEnabled = glIsEnabled(GL_BLEND);
-        GLint srcBlend, dstBlend;
-        glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcBlend);
-        glGetIntegerv(GL_BLEND_DST_ALPHA, &dstBlend);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDisable(GL_DEPTH_TEST);
-
-        glUseProgram(textureShaderProgram);
-
-        float x = static_cast<float>(screenWidth / 2);
-        float y = static_cast<float>(screenHeight - debugHeight);
-
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f));
-        model = glm::scale(model, glm::vec3(debugWidth, debugHeight, 1.0f));
-
-        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
-        glUniformMatrix4fv(glGetUniformLocation(textureShaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
-        glUniform4f(glGetUniformLocation(textureShaderProgram, "color"), 1.0f, 1.0f, 1.0f, 1.0f);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, debugTexture);
-        glUniform1i(glGetUniformLocation(textureShaderProgram, "tex"), 0);
-
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glUseProgram(0);
-
-        if (!blendEnabled) {
-            glDisable(GL_BLEND);
-        } else {
-            glBlendFunc(srcBlend, dstBlend);
-        }
-    }
 }

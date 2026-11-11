@@ -1,11 +1,11 @@
-#include "screen_manager.h"
+#include "scene/screen_manager.h"
 #include <cmath>
 #include <algorithm>
 
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <math.h>
-#include "config.h"
+#include "core/config.h"
 
 ScreenManager::ScreenManager(int width, int height)
     : primaryId(-1), nextId(0), boxActive(false), draggingScreens(false), dragMoved(false),

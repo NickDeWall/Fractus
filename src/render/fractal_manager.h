@@ -5,14 +5,12 @@
 #include <unordered_map>
 #include <map>
 #include <deque>
-#include "screen.h"
-#include "config.h"
-#include <SDL2/SDL_ttf.h>
-#include <string>
+#include "scene/screen.h"
+#include "core/config.h"
 
 class FractalManager {
 public:
-    FractalManager(int width, int height, GLuint textureShader, GLuint colorShader, const glm::mat4& projection);
+    FractalManager(int width, int height, const glm::mat4& projection);
     ~FractalManager();
 
     GLuint processFrame(const std::vector<Screen>& screens, int frameCounter, double time);
@@ -71,8 +69,7 @@ private:
     int width, height;
     int renderWidth, renderHeight;
     static void computeRenderSize(int w, int h, int& outW, int& outH);
-    GLuint textureShaderProgram;
-    GLuint colorShaderProgram;
+    GLuint compositeShaderProgram;
     GLuint screenShaderProgram;
     glm::mat4 projection;
 
@@ -90,14 +87,3 @@ private:
     GLuint outlineVao, outlineVbo;
     std::unordered_map<int, OutlineCache> outlines;
 };
-
-namespace OtherRenders {
-    void initGL(int width, int height, GLuint& vao, GLuint& vbo);
-    void cleanupGL(GLuint& vao, GLuint& vbo);
-    bool initFPSTexture(GLuint& fpsTexture);
-    bool updateFPSTexture(int fps, TTF_Font* font, GLuint& fpsTexture, int& outWidth, int& outHeight);
-    void renderFPS(int screenWidth, int screenHeight, GLuint fpsTexture, int fpsWidth, int fpsHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao);
-    bool initDebugTexture(GLuint& debugTexture);
-    bool updateDebugTexture(const std::string& debugText, TTF_Font* font, GLuint& debugTexture, int& outWidth, int& outHeight);
-    void renderDebugText(int screenWidth, int screenHeight, GLuint debugTexture, int debugWidth, int debugHeight, GLuint textureShaderProgram, const glm::mat4& projection, GLuint vao);
-}

@@ -21,14 +21,17 @@ pkg_check_modules(DEPS REQUIRED IMPORTED_TARGET sdl2 SDL2_ttf glew)
 
 add_executable(fractus
     ${ROOT}/src/main.cpp
-    ${ROOT}/src/input_manager.cpp
-    ${ROOT}/src/fractal_manager.cpp
-    ${ROOT}/src/math_utils.cpp
-    ${ROOT}/src/screen.cpp
-    ${ROOT}/src/screen_manager.cpp
-    ${ROOT}/src/shader_manager.cpp
-    ${ROOT}/src/ui_manager.cpp
-    ${ROOT}/src/display_modes.cpp
+    ${ROOT}/src/core/app.cpp
+    ${ROOT}/src/core/window.cpp
+    ${ROOT}/src/input/input_manager.cpp
+    ${ROOT}/src/render/fractal_manager.cpp
+    ${ROOT}/src/render/display_modes.cpp
+    ${ROOT}/src/render/overlay_renderer.cpp
+    ${ROOT}/src/render/shader_manager.cpp
+    ${ROOT}/src/scene/screen.cpp
+    ${ROOT}/src/scene/screen_manager.cpp
+    ${ROOT}/src/ui/ui_manager.cpp
+    ${ROOT}/src/util/math_utils.cpp
     ${IMGUI}/imgui.cpp
     ${IMGUI}/imgui_draw.cpp
     ${IMGUI}/imgui_tables.cpp
@@ -38,7 +41,7 @@ add_executable(fractus
 )
 
 target_include_directories(fractus PRIVATE
-    ${ROOT}/header
+    ${ROOT}/src
     ${IMGUI}
 )
 

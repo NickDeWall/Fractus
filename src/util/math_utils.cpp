@@ -1,5 +1,5 @@
-#include "math_utils.h"
-#include "config.h"
+#include "util/math_utils.h"
+#include "core/config.h"
 #include <cmath>
 #include <algorithm>
 #include <vector>

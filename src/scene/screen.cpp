@@ -1,7 +1,7 @@
-#include "screen.h"
+#include "scene/screen.h"
 #include <cmath>
 #include <algorithm>
-#include <math_utils.h>
+#include "util/math_utils.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>

@@ -1,8 +1,8 @@
-#include "ui_manager.h"
-#include "screen.h"
-#include "screen_manager.h"
-#include "config.h"
-#include "display_modes.h"
+#include "ui/ui_manager.h"
+#include "scene/screen.h"
+#include "scene/screen_manager.h"
+#include "core/config.h"
+#include "render/display_modes.h"
 #include <cmath>
 #include <string>
 

@@ -3,8 +3,8 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <SDL2/SDL.h>
-#include "screen.h"
-#include "config.h"
+#include "scene/screen.h"
+#include "core/config.h"
 
 class ScreenManager {
 public:

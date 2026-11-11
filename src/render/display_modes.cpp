@@ -1,5 +1,5 @@
-#include "display_modes.h"
-#include "config.h"
+#include "render/display_modes.h"
+#include "core/config.h"
 #include <algorithm>
 #include <string>
 #include <cmath>
