@@ -24,6 +24,7 @@ add_executable(fractus
     ${ROOT}/src/core/app.cpp
     ${ROOT}/src/core/window.cpp
     ${ROOT}/src/input/input_manager.cpp
+    ${ROOT}/src/render/collision_field.cpp
     ${ROOT}/src/render/fractal_manager.cpp
     ${ROOT}/src/render/display_modes.cpp
     ${ROOT}/src/render/overlay_renderer.cpp

@@ -7,6 +7,7 @@ App::App()
       frameCounter(0), framesUntilFullscreen(-1), elapsedTime(0.0), deltaTime(0.0f),
       lastFrameCounter(SDL_GetPerformanceCounter()) {
     fractalManager = std::make_unique<FractalManager>(window.getWidth(), window.getHeight(), window.getProjection());
+    collisionField = std::make_unique<CollisionField>();
     screenManager = std::make_unique<ScreenManager>(window.getWidth(), window.getHeight());
     overlay = std::make_unique<OverlayRenderer>();
     ui = std::make_unique<UiManager>(window.handle(), window.context());
@@ -30,6 +31,7 @@ App::~App() {
     ui.reset();
     overlay.reset();
     screenManager.reset();
+    collisionField.reset();
     fractalManager.reset();
 }
 
@@ -98,7 +100,10 @@ void App::update() {
     input->update(deltaTime);
     screenManager->update(deltaTime, input->getRotateInput());
     elapsedTime += deltaTime;
-    fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
+    const GLuint canvas = fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
+    if (collisionField->visible) {
+        collisionField->update(canvas, window.getWidth(), window.getHeight());
+    }
 }
 
 void App::draw() {
@@ -107,6 +112,8 @@ void App::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
 
     fractalManager->renderCurrentFrame();
+
+    collisionField->renderOutline();
 
     for (Screen* screen : screenManager->getSelectedScreens()) {
         fractalManager->renderOutline(*screen, input->isStretching(), window.getProjection());
@@ -120,7 +127,7 @@ void App::draw() {
         overlay->drawDebugText(window.getWidth(), window.getHeight(), window.getProjection());
     }
 
-    ui->render(*screenManager);
+    ui->render(*screenManager, *collisionField);
 
     window.swap();
 }

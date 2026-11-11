@@ -6,6 +6,7 @@
 
 class Screen;
 class ScreenManager;
+class CollisionField;
 
 class UiManager {
 public:
@@ -20,7 +21,7 @@ public:
     void closeScreenMenu();
     bool isScreenMenuOpen() const;
 
-    void render(ScreenManager& screenManager);
+    void render(ScreenManager& screenManager, CollisionField& collision);
 
 private:
     bool screenMenuOpen = false;
@@ -35,7 +36,7 @@ private:
     std::unordered_map<int, SDL_FPoint> rotationOrigins;
     SDL_FPoint rotationCenter = { 0.0f, 0.0f };
 
-    void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected);
+    void drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected, CollisionField& collision);
     void drawSizeSlider(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawProportions(ScreenManager& screenManager, const std::vector<Screen*>& selected);
     void drawRotationControl(ScreenManager& screenManager, const std::vector<Screen*>& selected);

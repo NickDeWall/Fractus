@@ -3,6 +3,7 @@
 #include "scene/screen_manager.h"
 #include "core/config.h"
 #include "render/display_modes.h"
+#include "render/collision_field.h"
 #include <cmath>
 #include <string>
 
@@ -89,7 +90,7 @@ bool UiManager::isScreenMenuOpen() const {
     return screenMenuOpen;
 }
 
-void UiManager::render(ScreenManager& screenManager) {
+void UiManager::render(ScreenManager& screenManager, CollisionField& collision) {
     const std::vector<Screen*> selected = screenManager.getSelectedScreens();
     if (selected.empty()) {
         screenMenuOpen = false;
@@ -100,7 +101,7 @@ void UiManager::render(ScreenManager& screenManager) {
     ImGui::NewFrame();
 
     if (screenMenuOpen) {
-        drawScreenMenu(screenManager, selected);
+        drawScreenMenu(screenManager, selected, collision);
     }
 
     if (screenManager.isBoxSelecting()) {
@@ -119,7 +120,7 @@ void UiManager::render(ScreenManager& screenManager) {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected) {
+void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<Screen*>& selected, CollisionField& collision) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const float padding = 10.0f;
 
@@ -168,6 +169,10 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
                 screen->setAlpha(hsva[3]);
             }
         }
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("Global");
+        ImGui::Checkbox("Show hitboxes", &collision.visible);
     }
     ImGui::End();
 }

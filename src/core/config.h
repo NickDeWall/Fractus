@@ -76,6 +76,16 @@ namespace Config {
     constexpr float SOFT_LIMIT_MARGIN = 10.0f;
     constexpr const char* PRECISE_FORMAT = "%.6f";
     constexpr float SOURCE_MAX_AMOUNT = 2.0f;
+    constexpr int COLLISION_DOWNSCALE = 4;
+    constexpr float COLLISION_FLOOR = 0.591f;
+    constexpr float COLLISION_PEAK_FRACTION = 0.99f;
+    constexpr float COLLISION_PEAK_POWER = 8.0f;
+    constexpr float COLLISION_NEIGHBORHOOD = 90.0f;
+    constexpr int COLLISION_SURROUND_LOD = 2;
+    constexpr float COLLISION_SMOOTHNESS = 2.5f;
+    constexpr int COLLISION_READBACK_SLOTS = 3;
+    constexpr SDL_Color COLLISION_OVERLAY_COLOR = { 255, 70, 90, 0 };
+    constexpr Uint8 COLLISION_OVERLAY_EDGE_ALPHA = 130;
     constexpr float INVERT_DEFAULT_AMOUNT = 1.0f;
     constexpr float INVERT_DEFAULT_CONTRAST = 1.5f;
     constexpr float INVERT_MIN_CONTRAST = 0.5f;
