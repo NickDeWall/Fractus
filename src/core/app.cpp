@@ -11,7 +11,7 @@ App::App()
     screenManager = std::make_unique<ScreenManager>(window.getWidth(), window.getHeight());
     overlay = std::make_unique<OverlayRenderer>();
     ui = std::make_unique<UiManager>(window.handle(), window.context());
-    input = std::make_unique<InputManager>(window, *screenManager, *ui);
+    input = std::make_unique<InputManager>(window, *screenManager, *ui, balls);
 
     if (Config::WRITE_LOG_FILE) {
         window.logInfo();
@@ -98,12 +98,14 @@ void App::updateDeltaTime() {
 
 void App::update() {
     input->update(deltaTime);
+    const Ball::Field field = [this](float x, float y) { return collisionField->depth(x, y); };
+    for (Ball& ball : balls) {
+        ball.update(deltaTime, field, static_cast<float>(window.getWidth()), static_cast<float>(window.getHeight()));
+    }
     screenManager->update(deltaTime, input->getRotateInput());
     elapsedTime += deltaTime;
     const GLuint canvas = fractalManager->processFrame(screenManager->getScreens(), frameCounter, elapsedTime);
-    if (collisionField->visible) {
-        collisionField->update(canvas, window.getWidth(), window.getHeight());
-    }
+    collisionField->update(canvas, window.getWidth(), window.getHeight(), deltaTime);
 }
 
 void App::draw() {
@@ -127,7 +129,7 @@ void App::draw() {
         overlay->drawDebugText(window.getWidth(), window.getHeight(), window.getProjection());
     }
 
-    ui->render(*screenManager, *collisionField);
+    ui->render(*screenManager, *collisionField, balls);
 
     window.swap();
 }

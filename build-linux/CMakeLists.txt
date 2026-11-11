@@ -29,6 +29,7 @@ add_executable(fractus
     ${ROOT}/src/render/display_modes.cpp
     ${ROOT}/src/render/overlay_renderer.cpp
     ${ROOT}/src/render/shader_manager.cpp
+    ${ROOT}/src/scene/ball.cpp
     ${ROOT}/src/scene/screen.cpp
     ${ROOT}/src/scene/screen_manager.cpp
     ${ROOT}/src/ui/ui_manager.cpp

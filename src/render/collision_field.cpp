@@ -1,5 +1,6 @@
 #include "render/collision_field.h"
 #include "render/shader_manager.h"
+#include <cmath>
 
 namespace {
     const char* VERTEX_SHADER = R"(
@@ -64,16 +65,29 @@ namespace {
         }
     )";
 
+    const char* BLEND_FRAGMENT_SHADER = R"(
+        #version 330 core
+        in vec2 uv;
+        uniform sampler2D previous;
+        uniform sampler2D current;
+        uniform float rate;
+        out float blended;
+        void main() {
+            blended = mix(texture(previous, uv).r, texture(current, uv).r, rate);
+        }
+    )";
+
     const char* OUTLINE_FRAGMENT_SHADER = R"(
         #version 330 core
         in vec2 uv;
         uniform sampler2D field;
         uniform vec3 tint;
         uniform float edgeAlpha;
+        uniform float threshold;
         out vec4 fragColor;
         void main() {
             float value = texture(field, uv).r;
-            float pixels = (value - 0.5) / max(fwidth(value), 1e-5);
+            float pixels = (value - threshold) / max(fwidth(value), 1e-5);
             fragColor = vec4(tint, clamp(1.5 - abs(pixels), 0.0, 1.0) * edgeAlpha);
         }
     )";
@@ -94,20 +108,21 @@ namespace {
 }
 
 CollisionField::CollisionField()
-    : textures{ 0, 0 }, levels{ 0, 0 }, fieldWidth(0), fieldHeight(0), windowWidth(0), windowHeight(0),
+    : textures{ 0, 0 }, levels{ 0, 0 }, history{ 0, 0 }, historyValid(false), fieldWidth(0), fieldHeight(0), windowWidth(0), windowHeight(0),
       issued(0), received(0), dataWidth(0), dataHeight(0) {
     solidityProgram = ShaderManager::createShaderProgram(VERTEX_SHADER, SOLIDITY_FRAGMENT_SHADER);
     blurProgram = ShaderManager::createShaderProgram(VERTEX_SHADER, BLUR_FRAGMENT_SHADER);
+    blendProgram = ShaderManager::createShaderProgram(VERTEX_SHADER, BLEND_FRAGMENT_SHADER);
     outlineProgram = ShaderManager::createShaderProgram(VERTEX_SHADER, OUTLINE_FRAGMENT_SHADER);
 
     glUseProgram(solidityProgram);
     glUniform1f(glGetUniformLocation(solidityProgram, "flip"), 1.0f);
     glUniform1i(glGetUniformLocation(solidityProgram, "canvas"), 0);
     glUniform1i(glGetUniformLocation(solidityProgram, "surround"), 1);
-    glUniform1f(glGetUniformLocation(solidityProgram, "floorLevel"), Config::COLLISION_FLOOR);
-    glUniform1f(glGetUniformLocation(solidityProgram, "fraction"), Config::COLLISION_PEAK_FRACTION);
     glUniform1f(glGetUniformLocation(solidityProgram, "surroundLod"), static_cast<float>(Config::COLLISION_SURROUND_LOD));
     glUniform1f(glGetUniformLocation(solidityProgram, "peakPower"), Config::COLLISION_PEAK_POWER);
+    floorLocation = glGetUniformLocation(solidityProgram, "floorLevel");
+    fractionLocation = glGetUniformLocation(solidityProgram, "fraction");
     measureLocation = glGetUniformLocation(solidityProgram, "measure");
 
     glUseProgram(blurProgram);
@@ -117,12 +132,19 @@ CollisionField::CollisionField()
     radiusLocation = glGetUniformLocation(blurProgram, "radius");
     lodLocation = glGetUniformLocation(blurProgram, "lod");
 
+    glUseProgram(blendProgram);
+    glUniform1f(glGetUniformLocation(blendProgram, "flip"), 1.0f);
+    glUniform1i(glGetUniformLocation(blendProgram, "previous"), 0);
+    glUniform1i(glGetUniformLocation(blendProgram, "current"), 1);
+    rateLocation = glGetUniformLocation(blendProgram, "rate");
+
     const SDL_Color tint = Config::COLLISION_OVERLAY_COLOR;
     glUseProgram(outlineProgram);
     glUniform1f(glGetUniformLocation(outlineProgram, "flip"), -1.0f);
     glUniform1i(glGetUniformLocation(outlineProgram, "field"), 0);
     glUniform3f(glGetUniformLocation(outlineProgram, "tint"), tint.r / 255.0f, tint.g / 255.0f, tint.b / 255.0f);
     glUniform1f(glGetUniformLocation(outlineProgram, "edgeAlpha"), Config::COLLISION_OVERLAY_EDGE_ALPHA / 255.0f);
+    thresholdLocation = glGetUniformLocation(outlineProgram, "threshold");
     glUseProgram(0);
 
     glGenFramebuffers(1, &fbo);
@@ -139,9 +161,11 @@ CollisionField::~CollisionField() {
     }
     glDeleteTextures(2, textures);
     glDeleteTextures(2, levels);
+    glDeleteTextures(2, history);
     glDeleteVertexArrays(1, &vao);
     glDeleteFramebuffers(1, &fbo);
     glDeleteProgram(outlineProgram);
+    glDeleteProgram(blendProgram);
     glDeleteProgram(blurProgram);
     glDeleteProgram(solidityProgram);
 }
@@ -151,12 +175,42 @@ void CollisionField::resize(int width, int height) {
 
     glDeleteTextures(2, textures);
     glDeleteTextures(2, levels);
+    glDeleteTextures(2, history);
     textures[0] = createFieldTexture(width, height, GL_R8, false);
     textures[1] = createFieldTexture(width, height, GL_R8, false);
     levels[0] = createFieldTexture(width, height, GL_R32F, true);
     levels[1] = createFieldTexture(width, height, GL_R32F, true);
+    history[0] = createFieldTexture(width, height, GL_R16, false);
+    history[1] = createFieldTexture(width, height, GL_R16, false);
+    historyValid = false;
     fieldWidth = width;
     fieldHeight = height;
+}
+
+void CollisionField::steady(float rate) {
+    glUseProgram(blendProgram);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, history[1], 0);
+    glUniform1f(rateLocation, rate);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, history[0]);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[0], 0);
+    glUniform1f(rateLocation, 1.0f);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, history[1]);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, history[1]);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    std::swap(history[0], history[1]);
 }
 
 void CollisionField::blur(GLuint* pair, float radius, int lod) {
@@ -232,7 +286,7 @@ void CollisionField::request() {
     }
 }
 
-void CollisionField::update(GLuint canvas, int newWindowWidth, int newWindowHeight) {
+void CollisionField::update(GLuint canvas, int newWindowWidth, int newWindowHeight, float deltaTime) {
     windowWidth = newWindowWidth;
     windowHeight = newWindowHeight;
     resize(std::max(1, windowWidth / Config::COLLISION_DOWNSCALE), std::max(1, windowHeight / Config::COLLISION_DOWNSCALE));
@@ -255,11 +309,13 @@ void CollisionField::update(GLuint canvas, int newWindowWidth, int newWindowHeig
 
     glBindTexture(GL_TEXTURE_2D, levels[0]);
     glGenerateMipmap(GL_TEXTURE_2D);
-    blur(levels, Config::COLLISION_NEIGHBORHOOD * scale / (1 << lod), lod);
+    blur(levels, neighborhood * scale / (1 << lod), lod);
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textures[0], 0);
     glUseProgram(solidityProgram);
     glUniform1i(measureLocation, 0);
+    glUniform1f(floorLocation, floorLevel);
+    glUniform1f(fractionLocation, fraction);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, levels[0]);
     glActiveTexture(GL_TEXTURE0);
@@ -270,7 +326,14 @@ void CollisionField::update(GLuint canvas, int newWindowWidth, int newWindowHeig
     glBindTexture(GL_TEXTURE_2D, 0);
     glActiveTexture(GL_TEXTURE0);
 
-    blur(textures, Config::COLLISION_SMOOTHNESS * scale, 0);
+    blur(textures, smoothness * scale, 0);
+
+    if (timeSmoothing > 0.0f) {
+        steady(historyValid ? 1.0f - std::exp(-deltaTime * 1000.0f / timeSmoothing) : 1.0f);
+        historyValid = true;
+    } else {
+        historyValid = false;
+    }
 
     request();
 
@@ -287,6 +350,7 @@ void CollisionField::renderOutline() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glUseProgram(outlineProgram);
+    glUniform1f(thresholdLocation, threshold);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textures[0]);
     glBindVertexArray(vao);
@@ -301,6 +365,10 @@ float CollisionField::sample(float x, float y) const {
     return sampleGrid(data.data(), dataWidth, dataHeight, x / windowWidth, y / windowHeight);
 }
 
+float CollisionField::depth(float x, float y) const {
+    return sample(x, y) - threshold;
+}
+
 bool CollisionField::solid(float x, float y) const {
-    return sample(x, y) > 0.5f;
+    return depth(x, y) > 0.0f;
 }

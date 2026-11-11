@@ -12,14 +12,21 @@ public:
     CollisionField(const CollisionField&) = delete;
     CollisionField& operator=(const CollisionField&) = delete;
 
-    void update(GLuint canvas, int newWindowWidth, int newWindowHeight);
+    void update(GLuint canvas, int newWindowWidth, int newWindowHeight, float deltaTime);
     void renderOutline();
 
     float sample(float x, float y) const;
+    float depth(float x, float y) const;
     bool solid(float x, float y) const;
 
     static float sampleGrid(const unsigned char* data, int width, int height, float u, float v);
 
+    float floorLevel = Config::COLLISION_FLOOR;
+    float fraction = Config::COLLISION_PEAK_FRACTION;
+    float neighborhood = Config::COLLISION_NEIGHBORHOOD;
+    float smoothness = Config::COLLISION_SMOOTHNESS;
+    float threshold = Config::COLLISION_THRESHOLD;
+    float timeSmoothing = Config::COLLISION_TIME_SMOOTHING;
     bool visible = false;
 
 private:
@@ -33,21 +40,29 @@ private:
 
     void resize(int width, int height);
     void blur(GLuint* pair, float radius, int lod);
+    void steady(float rate);
     void collect();
     void request();
 
     GLuint solidityProgram;
     GLuint blurProgram;
+    GLuint blendProgram;
     GLuint outlineProgram;
+    GLint floorLocation;
+    GLint fractionLocation;
     GLint measureLocation;
     GLint axisLocation;
     GLint radiusLocation;
     GLint lodLocation;
+    GLint rateLocation;
+    GLint thresholdLocation;
 
     GLuint fbo;
     GLuint vao;
     GLuint textures[2];
     GLuint levels[2];
+    GLuint history[2];
+    bool historyValid;
     int fieldWidth;
     int fieldHeight;
     int windowWidth;

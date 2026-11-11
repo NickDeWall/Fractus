@@ -4,6 +4,7 @@
 #include "core/config.h"
 #include "render/display_modes.h"
 #include "render/collision_field.h"
+#include "scene/ball.h"
 #include <cmath>
 #include <string>
 
@@ -90,7 +91,7 @@ bool UiManager::isScreenMenuOpen() const {
     return screenMenuOpen;
 }
 
-void UiManager::render(ScreenManager& screenManager, CollisionField& collision) {
+void UiManager::render(ScreenManager& screenManager, CollisionField& collision, const std::vector<Ball>& balls) {
     const std::vector<Screen*> selected = screenManager.getSelectedScreens();
     if (selected.empty()) {
         screenMenuOpen = false;
@@ -99,6 +100,13 @@ void UiManager::render(ScreenManager& screenManager, CollisionField& collision) 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
+
+    // ponytail: test balls are drawn through ImGui's background list; give them their own renderer once they become real game objects
+    const SDL_Color ballColor = Config::BALL_COLOR;
+    for (const Ball& ball : balls) {
+        ImGui::GetBackgroundDrawList()->AddCircleFilled(ImVec2(ball.getX(), ball.getY()), Config::BALL_RADIUS,
+            IM_COL32(ballColor.r, ballColor.g, ballColor.b, ballColor.a));
+    }
 
     if (screenMenuOpen) {
         drawScreenMenu(screenManager, selected, collision);
@@ -173,6 +181,23 @@ void UiManager::drawScreenMenu(ScreenManager& screenManager, const std::vector<S
         ImGui::Spacing();
         ImGui::SeparatorText("Global");
         ImGui::Checkbox("Show hitboxes", &collision.visible);
+
+        const ImGuiSliderFlags hitboxFlags = ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoRoundToFormat;
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxFloor", &collision.floorLevel, 0.0f, 1.0f, "Floor %.3f", hitboxFlags);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxFraction", &collision.fraction, 0.0f, 1.0f, "Peak fraction %.3f", hitboxFlags);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxNeighborhood", &collision.neighborhood, 0.0f, Config::COLLISION_MAX_NEIGHBORHOOD,
+            "Neighborhood %.0f px", hitboxFlags);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxSmoothness", &collision.smoothness, 0.0f, Config::COLLISION_MAX_SMOOTHNESS,
+            "Smoothness %.1f px", hitboxFlags);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxThreshold", &collision.threshold, 0.05f, 0.95f, "Threshold %.2f", hitboxFlags);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##hitboxTime", &collision.timeSmoothing, 0.0f, Config::COLLISION_MAX_TIME_SMOOTHING,
+            "Time smoothing %.0f ms", hitboxFlags);
     }
     ImGui::End();
 }

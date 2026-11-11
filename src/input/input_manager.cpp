@@ -1,14 +1,15 @@
 #include "input/input_manager.h"
 #include "core/config.h"
 #include "core/window.h"
+#include "scene/ball.h"
 #include "scene/screen.h"
 #include "scene/screen_manager.h"
 #include "ui/ui_manager.h"
 #include <algorithm>
 
-InputManager::InputManager(Window& window, ScreenManager& screenManager, UiManager& ui)
-    : window(window), screens(screenManager), ui(ui),
-      quit(false), stretching(false), rotateInput(0) {}
+InputManager::InputManager(Window& window, ScreenManager& screenManager, UiManager& ui, std::vector<Ball>& balls)
+    : window(window), screens(screenManager), ui(ui), balls(balls),
+      quit(false), stretching(false), rotateInput(0), heldBall(-1) {}
 
 void InputManager::handleEvent(const SDL_Event& event) {
     switch (event.type) {
@@ -22,6 +23,10 @@ void InputManager::handleEvent(const SDL_Event& event) {
         break;
     case SDL_MOUSEBUTTONUP:
         if (event.button.button == SDL_BUTTON_LEFT) {
+            if (heldBall >= 0) {
+                balls[heldBall].release();
+                heldBall = -1;
+            }
             screens.endSelection({ static_cast<float>(event.button.x), static_cast<float>(event.button.y) },
                 (SDL_GetModState() & KMOD_CTRL) != 0);
         }
@@ -64,6 +69,12 @@ void InputManager::handleKeyDown(const SDL_KeyboardEvent& event) {
     else if (sym == SDLK_e && !screens.getSelectedScreens().empty()) {
         ui.toggleScreenMenu();
     }
+    else if (sym == SDLK_b) {
+        int x = 0;
+        int y = 0;
+        SDL_GetMouseState(&x, &y);
+        balls.emplace_back(static_cast<float>(x), static_cast<float>(y));
+    }
     else if (sym == SDLK_RSHIFT || sym == SDLK_F11 ||
         (sym == SDLK_RETURN && (event.keysym.mod & KMOD_ALT))) {
         window.toggleFullscreen();
@@ -76,7 +87,15 @@ void InputManager::handleMouseDown(const SDL_MouseButtonEvent& event) {
 
     switch (event.button) {
     case SDL_BUTTON_LEFT:
-        screens.handleSelection(pos, additive);
+        for (int i = static_cast<int>(balls.size()) - 1; i >= 0 && heldBall < 0; --i) {
+            if (balls[i].contains(pos.x, pos.y)) {
+                balls[i].grab(pos.x, pos.y);
+                heldBall = i;
+            }
+        }
+        if (heldBall < 0) {
+            screens.handleSelection(pos, additive);
+        }
         break;
     case SDL_BUTTON_MIDDLE:
         screens.createScreen(pos);
@@ -94,6 +113,9 @@ void InputManager::update(float deltaTime) {
     SDL_GetMouseState(&x, &y);
     const SDL_FPoint mousePos = { static_cast<float>(x), static_cast<float>(y) };
 
+    if (heldBall >= 0) {
+        balls[heldBall].dragTo(mousePos.x, mousePos.y);
+    }
     if (stretching) {
         screens.updateStretch(mousePos);
     }

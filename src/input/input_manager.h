@@ -1,13 +1,15 @@
 #pragma once
 #include <SDL2/SDL.h>
+#include <vector>
 
 class Window;
 class ScreenManager;
 class UiManager;
+class Ball;
 
 class InputManager {
 public:
-    InputManager(Window& window, ScreenManager& screenManager, UiManager& ui);
+    InputManager(Window& window, ScreenManager& screenManager, UiManager& ui, std::vector<Ball>& balls);
 
     void handleEvent(const SDL_Event& event);
     void update(float deltaTime);
@@ -20,10 +22,12 @@ private:
     Window& window;
     ScreenManager& screens;
     UiManager& ui;
+    std::vector<Ball>& balls;
 
     bool quit;
     bool stretching;
     int rotateInput;
+    int heldBall;
 
     void handleKeyDown(const SDL_KeyboardEvent& event);
     void handleMouseDown(const SDL_MouseButtonEvent& event);

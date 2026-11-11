@@ -7,6 +7,7 @@
 class Screen;
 class ScreenManager;
 class CollisionField;
+class Ball;
 
 class UiManager {
 public:
@@ -21,7 +22,7 @@ public:
     void closeScreenMenu();
     bool isScreenMenuOpen() const;
 
-    void render(ScreenManager& screenManager, CollisionField& collision);
+    void render(ScreenManager& screenManager, CollisionField& collision, const std::vector<Ball>& balls);
 
 private:
     bool screenMenuOpen = false;
