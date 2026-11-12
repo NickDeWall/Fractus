@@ -39,6 +39,7 @@ public:
     bool isSelected(const Screen& screen) const;
     std::vector<Screen*> getSelectedScreens();
     const std::vector<Screen>& getScreens() const { return screens; }
+    float surfaceSpeed(float x, float y, float normalX, float normalY) const;
 
 private:
     std::vector<Screen> screens;

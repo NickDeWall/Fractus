@@ -91,6 +91,7 @@ namespace Config {
     constexpr int COLLISION_READBACK_SLOTS = 3;
     constexpr SDL_Color COLLISION_OVERLAY_COLOR = { 255, 70, 90, 0 };
     constexpr Uint8 COLLISION_OVERLAY_EDGE_ALPHA = 130;
+    constexpr float SCREEN_MOTION_SMOOTHING = 0.015f;
     constexpr float BALL_RADIUS = 16.0f;
     constexpr int BALL_SAMPLES = 24;
     constexpr float BALL_GRAVITY = 1800.0f;
@@ -103,6 +104,7 @@ namespace Config {
     constexpr int BALL_MAX_SUBSTEPS = 8;
     constexpr int BALL_RESOLVE_PASSES = 3;
     constexpr float BALL_MAX_PUSH = 4.0f;
+    constexpr float BALL_MOTION_REACH = 4.0f;
     constexpr float BALL_PINCH_RATIO = 0.1f;
     constexpr int BALL_BURIAL_RINGS = 3;
     constexpr float BALL_WEDGE_GAIN = 0.98f;

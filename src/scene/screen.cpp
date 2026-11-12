@@ -9,7 +9,9 @@
 Screen::Screen(int id, float x, float y, int width, int height, float rotation, SDL_Color color)
     : id(id), xCoord(x), yCoord(y), origWidth(width), origHeight(height), rotation(rotation),
       fromWidth(width), fromHeight(height), targetWidth(width), targetHeight(height), scaleProgress(1.0f), angularVelocity(0.0f), targetX(x), targetY(y), updateRate(Config::DEFAULT_UPDATE_RATE), delay(0.0f),
-      stack{ DisplayModes::makeEntry(DisplayModes::sourceMode()) } {
+      stack{ DisplayModes::makeEntry(DisplayModes::sourceMode()) },
+      lastX(x), lastY(y), lastWidth(width), lastHeight(height), lastRotation(rotation),
+      rateX(0.0f), rateY(0.0f), rateWidth(0.0f), rateHeight(0.0f), rateSpin(0.0f) {
     MathUtils::rgbToHsv(color.r, color.g, color.b, hue, saturation, value);
     alpha = color.a / 255.0f;
 }
@@ -262,4 +264,39 @@ void Screen::update(float dt, float targetVelocity) {
     scaleProgress = std::min(1.0f, scaleProgress + dt / Config::SCALE_DURATION);
     origWidth = static_cast<float>(MathUtils::easeOutPowerInterpolate(fromWidth, targetWidth, scaleProgress, Config::SCALE_EASE_STRENGTH));
     origHeight = static_cast<float>(MathUtils::easeOutPowerInterpolate(fromHeight, targetHeight, scaleProgress, Config::SCALE_EASE_STRENGTH));
+}
+
+void Screen::trackMotion(float dt) {
+    if (dt <= 0.0f) return;
+
+    const float blend = 1.0f - std::exp(-dt / Config::SCREEN_MOTION_SMOOTHING);
+    const float spin = std::remainder(rotation - lastRotation, 360.0f) * static_cast<float>(Config::PI) / 180.0f;
+
+    rateX += ((xCoord - lastX) / dt - rateX) * blend;
+    rateY += ((yCoord - lastY) / dt - rateY) * blend;
+    rateWidth += ((origWidth - lastWidth) / dt - rateWidth) * blend;
+    rateHeight += ((origHeight - lastHeight) / dt - rateHeight) * blend;
+    rateSpin += (spin / dt - rateSpin) * blend;
+
+    lastX = xCoord;
+    lastY = yCoord;
+    lastWidth = origWidth;
+    lastHeight = origHeight;
+    lastRotation = rotation;
+}
+
+SDL_FPoint Screen::velocityAt(float pointX, float pointY) const {
+    const float radians = rotation * static_cast<float>(Config::PI) / 180.0f;
+    const float cosine = std::cos(radians);
+    const float sine = std::sin(radians);
+    const float offsetX = pointX - xCoord;
+    const float offsetY = pointY - yCoord;
+
+    const float growX = (offsetX * cosine + offsetY * sine) * rateWidth / std::max(origWidth, 1.0f);
+    const float growY = (offsetY * cosine - offsetX * sine) * rateHeight / std::max(origHeight, 1.0f);
+
+    return {
+        rateX - rateSpin * offsetY + growX * cosine - growY * sine,
+        rateY + rateSpin * offsetX + growX * sine + growY * cosine
+    };
 }

@@ -334,10 +334,27 @@ void ScreenManager::update(float dt, int rotateInput) {
         const float target = selected ? rotateInput * Config::ROTATION_SPEED : 0.0f;
         screen.update(dt, target);
 
-        if (!pivot || !selected) continue;
-        const float degrees = screen.getAngularVelocity() * dt;
-        if (degrees != 0.0f) screen.orbit(center.x, center.y, degrees);
+        if (pivot && selected) {
+            const float degrees = screen.getAngularVelocity() * dt;
+            if (degrees != 0.0f) screen.orbit(center.x, center.y, degrees);
+        }
+        screen.trackMotion(dt);
     }
+}
+
+float ScreenManager::surfaceSpeed(float x, float y, float normalX, float normalY) const {
+    float fastest = 0.0f;
+    bool found = false;
+
+    for (const Screen& screen : screens) {
+        if (!pointInScreen(x, y, screen)) continue;
+
+        const SDL_FPoint velocity = screen.velocityAt(x, y);
+        const float speed = velocity.x * normalX + velocity.y * normalY;
+        if (!found || speed > fastest) fastest = speed;
+        found = true;
+    }
+    return fastest;
 }
 
 void ScreenManager::resize(int newWidth, int newHeight) {

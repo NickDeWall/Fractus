@@ -44,7 +44,7 @@ void Ball::release() {
     held = false;
 }
 
-void Ball::update(float deltaTime, const Field& field, float width, float height) {
+void Ball::update(float deltaTime, const Field& field, const Motion& motion, float width, float height) {
     if (deltaTime <= 0.0f) return;
 
     if (held) {
@@ -59,11 +59,11 @@ void Ball::update(float deltaTime, const Field& field, float width, float height
     const float travel = std::hypot(velocityX, velocityY) * deltaTime;
     const int steps = std::clamp(static_cast<int>(std::ceil(travel / (Config::BALL_RADIUS * 0.5f))), 1, Config::BALL_MAX_SUBSTEPS);
     for (int i = 0; i < steps; ++i) {
-        step(deltaTime / steps, field, width, height);
+        step(deltaTime / steps, field, motion, width, height);
     }
 }
 
-void Ball::step(float duration, const Field& field, float width, float height) {
+void Ball::step(float duration, const Field& field, const Motion& motion, float width, float height) {
     velocityY += Config::BALL_GRAVITY * duration;
 
     const float speed = std::hypot(velocityX, velocityY);
@@ -77,20 +77,20 @@ void Ball::step(float duration, const Field& field, float width, float height) {
     x += velocityX * duration;
     y += velocityY * duration;
 
-    const bool freed = settle(field);
+    const bool freed = settle(field, motion, duration);
 
     if (x < Config::BALL_RADIUS) {
         x = Config::BALL_RADIUS;
-        bounce(1.0f, 0.0f);
+        bounce(1.0f, 0.0f, 0.0f);
     } else if (x > width - Config::BALL_RADIUS) {
         x = width - Config::BALL_RADIUS;
-        bounce(-1.0f, 0.0f);
+        bounce(-1.0f, 0.0f, 0.0f);
     }
 
     const float rest = height - Config::BALL_RADIUS;
     if (y > rest) {
         y = rest;
-        bounce(0.0f, -1.0f);
+        bounce(0.0f, -1.0f, 0.0f);
     }
 
     if (!freed) {
@@ -179,18 +179,22 @@ void Ball::wedge(const Field& field, float previousX, float previousY) {
     y = bestY;
 }
 
-bool Ball::settle(const Field& field) {
+bool Ball::settle(const Field& field, const Motion& motion, float duration) {
     for (int pass = 0; pass < Config::BALL_RESOLVE_PASSES; ++pass) {
         const Contact contact = probe(field, x, y, 0.0f);
         if (contact.overlap <= 0.0f) return true;
         if (!contact.directed) return false;
+
+        const float inset = Config::BALL_RADIUS + Config::BALL_MOTION_REACH;
+        const float surfaceSpeed = motion(x - contact.normalX * inset, y - contact.normalY * inset, contact.normalX, contact.normalY);
+        const float limit = Config::BALL_MAX_PUSH + std::max(0.0f, surfaceSpeed) * duration;
 
         float blocked = 0.0f;
         float clear = 0.0f;
         float best = 0.0f;
         float bestOverlap = contact.overlap;
 
-        for (float reach = Config::BALL_MAX_PUSH * 0.125f; reach <= Config::BALL_MAX_PUSH; reach *= 2.0f) {
+        for (float reach = limit * 0.125f; reach <= limit; reach *= 2.0f) {
             const float overlap = probe(field, x + contact.normalX * reach, y + contact.normalY * reach, 0.0f).overlap;
             if (overlap <= 0.0f) {
                 clear = reach;
@@ -219,7 +223,7 @@ bool Ball::settle(const Field& field) {
 
         x += contact.normalX * best;
         y += contact.normalY * best;
-        bounce(contact.normalX, contact.normalY);
+        bounce(contact.normalX, contact.normalY, surfaceSpeed);
     }
 
     return isClear(field, x, y);
@@ -248,8 +252,8 @@ void Ball::escape(const Field& field, float width, float height) {
     }
 }
 
-void Ball::bounce(float normalX, float normalY) {
-    const float inward = velocityX * normalX + velocityY * normalY;
+void Ball::bounce(float normalX, float normalY, float surfaceSpeed) {
+    const float inward = velocityX * normalX + velocityY * normalY - surfaceSpeed;
     if (inward >= 0.0f) return;
 
     const float restitution = -inward > Config::BALL_REST_SPEED ? Config::BALL_BOUNCE : 0.0f;

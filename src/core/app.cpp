@@ -99,8 +99,11 @@ void App::updateDeltaTime() {
 void App::update() {
     input->update(deltaTime);
     const Ball::Field field = [this](float x, float y) { return collisionField->depth(x, y); };
+    const Ball::Motion motion = [this](float x, float y, float normalX, float normalY) {
+        return screenManager->surfaceSpeed(x, y, normalX, normalY);
+    };
     for (Ball& ball : balls) {
-        ball.update(deltaTime, field, static_cast<float>(window.getWidth()), static_cast<float>(window.getHeight()));
+        ball.update(deltaTime, field, motion, static_cast<float>(window.getWidth()), static_cast<float>(window.getHeight()));
     }
     screenManager->update(deltaTime, input->getRotateInput());
     elapsedTime += deltaTime;

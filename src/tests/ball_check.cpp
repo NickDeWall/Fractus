@@ -7,11 +7,12 @@
 
 namespace {
     const float STEP = 1.0f / 600.0f;
+    const Ball::Motion STILL = [](float, float, float, float) { return 0.0f; };
 
     void run(Ball& ball, const Ball::Field& field, float width, float height, float seconds) {
         const int frames = static_cast<int>(seconds / STEP);
         for (int i = 0; i < frames; ++i) {
-            ball.update(STEP, field, width, height);
+            ball.update(STEP, field, STILL, width, height);
         }
     }
 
@@ -71,7 +72,7 @@ int main() {
     thrown.grab(400.0f, 100.0f);
     for (int i = 0; i < 120; ++i) {
         thrown.dragTo(400.0f + i, 100.0f);
-        thrown.update(STEP, empty, 5000.0f, 5000.0f);
+        thrown.update(STEP, empty, STILL, 5000.0f, 5000.0f);
     }
     thrown.release();
     const float releaseX = thrown.getX();
@@ -81,6 +82,19 @@ int main() {
     run(thrown, empty, 600.0f, 500.0f, 5.0f);
     assert(thrown.getX() <= 600.0f - radius);
     assert(thrown.getX() >= radius);
+
+    float wallX = 300.0f;
+    const Ball::Field wall = [&wallX](float x, float) { return ramp(wallX - x); };
+    const Ball::Motion advancing = [](float, float, float normalX, float) { return 600.0f * normalX; };
+    Ball shoved(350.0f, 100.0f);
+    Ball whacked(350.0f, 100.0f);
+    for (int i = 0; i < 300; ++i) {
+        wallX += 600.0f * STEP;
+        shoved.update(STEP, wall, STILL, 5000.0f, 5000.0f);
+        whacked.update(STEP, wall, advancing, 5000.0f, 5000.0f);
+    }
+    assert(shoved.getX() < wallX + radius + 4.0f);
+    assert(whacked.getX() > wallX + radius + 60.0f);
 
     std::puts("ball_check passed");
     return 0;

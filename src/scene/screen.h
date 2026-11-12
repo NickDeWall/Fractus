@@ -35,6 +35,7 @@ public:
     int getHeight() const;
     float getRotation() const;
     float getAngularVelocity() const;
+    SDL_FPoint velocityAt(float pointX, float pointY) const;
     void getColorF(float& r, float& g, float& b, float& a) const;
     float getHue() const;
     float getSaturation() const;
@@ -58,6 +59,7 @@ public:
     void orbit(float centerX, float centerY, float degrees);
     void scaleAbout(float centerX, float centerY, float factor);
     void update(float dt, float targetVelocity);
+    void trackMotion(float dt);
 
 private:
     int id;
@@ -83,4 +85,15 @@ private:
     float updateRate;
     float delay;
     std::vector<ModeEntry> stack;
+
+    float lastX;
+    float lastY;
+    float lastWidth;
+    float lastHeight;
+    float lastRotation;
+    float rateX;
+    float rateY;
+    float rateWidth;
+    float rateHeight;
+    float rateSpin;
 };
